@@ -4,7 +4,6 @@ go 1.27.2
 
 require (
 	github.com/asdine/storm/v3 v3.2.1
-	github.com/asticode/go-astisub v0.42.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/mux v1.8.1
 	github.com/jellydator/ttlcache/v3 v3.4.1
@@ -29,8 +28,6 @@ require (
 require (
 	github.com/STARRY-S/zip v0.2.3 // indirect
 	github.com/andybalholm/brotli v1.2.2 // indirect
-	github.com/asticode/go-astikit v0.59.0 // indirect
-	github.com/asticode/go-astits v1.15.0 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.6.5 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
