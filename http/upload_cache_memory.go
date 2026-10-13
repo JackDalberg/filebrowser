@@ -90,12 +90,6 @@ func (c *memoryUploadCache) Close() {
 }
 
 // NewUploadCache creates a new upload cache.
-// If redisURL is empty, an in-memory cache will be used (suitable for single instance deployments).
-// Otherwise, Redis will be used for the cache (suitable for multi-instance deployments).
-// The redisURL can include credentials, e.g. redis://user:pass@host:port
-func NewUploadCache(redisURL string) (UploadCache, error) {
-	if redisURL != "" {
-		return newRedisUploadCache(redisURL)
-	}
+func NewUploadCache() (UploadCache, error) {
 	return newMemoryUploadCache(), nil
 }

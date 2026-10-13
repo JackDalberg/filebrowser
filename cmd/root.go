@@ -37,7 +37,6 @@ var (
 		"minimum-password-length":          "minimumPasswordLength",
 		"socket-perm":                      "socketPerm",
 		"disable-type-detection-by-header": "disableTypeDetectionByHeader",
-		"redis-cache-url":                  "redisCacheUrl",
 		"token-expiration-time":            "tokenExpirationTime",
 		"baseurl":                          "baseURL",
 	}
@@ -79,7 +78,6 @@ func init() {
 	flags.String("username", "admin", "username for the first user when using quick setup")
 	flags.String("password", "", "hashed password for the first user when using quick setup")
 	flags.Uint32("socketPerm", 0o666, "unix socket file permissions")
-	flags.String("redisCacheUrl", "", "redis cache URL (for multi-instance deployments), e.g. redis://user:pass@host:port")
 	addServerFlags(flags)
 }
 
@@ -140,11 +138,7 @@ Also, if the database path doesn't exist, File Browser will enter into
 the quick setup mode and a new database will be bootstrapped and a new
 user created with the credentials from options "username" and "password".`,
 	RunE: withViperAndStore(func(_ *cobra.Command, _ []string, v *viper.Viper, st *store) error {
-		if !st.databaseExisted {
-		}
-
-		redisCacheURL := v.GetString("redisCacheUrl")
-		uploadCache, err := fbhttp.NewUploadCache(redisCacheURL)
+		uploadCache, err := fbhttp.NewUploadCache()
 		if err != nil {
 			return fmt.Errorf("failed to initialize upload cache: %w", err)
 		}
