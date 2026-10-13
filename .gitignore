@@ -37,3 +37,6 @@ build/
 
 default.nix
 Dockerfile.dev
+
+# Personal short-lived tracking files
+TODO.md
