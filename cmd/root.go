@@ -43,7 +43,6 @@ var (
 		"socket-perm":                      "socketPerm",
 		"disable-thumbnails":               "disableThumbnails",
 		"disable-preview-resize":           "disablePreviewResize",
-		"disable-exec":                     "disableExec",
 		"disable-type-detection-by-header": "disableTypeDetectionByHeader",
 		"img-processors":                   "imageProcessors",
 		"cache-dir":                        "cacheDir",
@@ -88,7 +87,7 @@ func init() {
 	flags.Bool("noauth", false, "use the noauth auther when using quick setup")
 	flags.String("username", "admin", "username for the first user when using quick setup")
 	flags.String("password", "", "hashed password for the first user when using quick setup")
-	flags.Uint32("socketPerm", 0666, "unix socket file permissions")
+	flags.Uint32("socketPerm", 0o666, "unix socket file permissions")
 	flags.String("cacheDir", "", "file cache directory (disabled if empty)")
 	flags.String("redisCacheUrl", "", "redis cache URL (for multi-instance deployments), e.g. redis://user:pass@host:port")
 	flags.Int("imageProcessors", 4, "image processors count")
@@ -109,7 +108,6 @@ func addServerFlags(flags *pflag.FlagSet) {
 	flags.String("tokenExpirationTime", "2h", "user session timeout")
 	flags.Bool("disableThumbnails", false, "disable image thumbnails")
 	flags.Bool("disablePreviewResize", false, "disable resize of image previews")
-	flags.Bool("disableExec", true, "disables Command Runner feature")
 	flags.Bool("disableTypeDetectionByHeader", false, "disables type detection by reading file headers")
 	flags.Bool("disableImageResolutionCalc", false, "disables image resolution calculation by reading image files")
 	flags.Bool("followExternalSymlinks", false, "follow symlinks whose target is outside the user scope (unsafe)")
@@ -174,7 +172,7 @@ user created with the credentials from options "username" and "password".`,
 		var fileCache diskcache.Interface = diskcache.NewNoOp()
 		cacheDir := v.GetString("cacheDir")
 		if cacheDir != "" {
-			if err := os.MkdirAll(cacheDir, 0700); err != nil {
+			if err := os.MkdirAll(cacheDir, 0o700); err != nil {
 				return fmt.Errorf("can't make directory %s: %w", cacheDir, err)
 			}
 			fileCache = diskcache.New(afero.NewOsFs(), cacheDir)
@@ -191,11 +189,6 @@ user created with the credentials from options "username" and "password".`,
 			return err
 		}
 		setupLog(server.Log)
-
-		log.Println("NOTICE: File Browser is being wound down.")
-		log.Println("NOTICE: The project is archived on 2026-09-01, after which there will be no")
-		log.Println("NOTICE: further releases and no security fixes. Known unfixed issues are at")
-		log.Println("NOTICE: https://github.com/filebrowser/filebrowser/security/advisories")
 
 		root, err := filepath.Abs(server.Root)
 		if err != nil {
@@ -223,9 +216,11 @@ user created with the credentials from options "username" and "password".`,
 			if err != nil {
 				return err
 			}
-			listener, err = tls.Listen("tcp", adr, &tls.Config{
-				MinVersion:   tls.VersionTLS12,
-				Certificates: []tls.Certificate{cer}},
+			listener, err = tls.Listen(
+				"tcp", adr, &tls.Config{
+					MinVersion:   tls.VersionTLS12,
+					Certificates: []tls.Certificate{cer},
+				},
 			)
 			if err != nil {
 				return err
@@ -264,7 +259,8 @@ user created with the credentials from options "username" and "password".`,
 		}()
 
 		sigc := make(chan os.Signal, 1)
-		signal.Notify(sigc,
+		signal.Notify(
+			sigc,
 			os.Interrupt,
 			syscall.SIGHUP,
 			syscall.SIGINT,
@@ -356,10 +352,6 @@ func getServerSettings(v *viper.Viper, st *storage.Storage) (*settings.Server, e
 		server.ImageResolutionCal = !v.GetBool("disableImageResolutionCalc")
 	}
 
-	if v.IsSet("disableExec") {
-		server.EnableExec = !v.GetBool("disableExec")
-	}
-
 	if v.IsSet("followExternalSymlinks") {
 		server.FollowExternalSymlinks = v.GetBool("followExternalSymlinks")
 	}
@@ -438,7 +430,6 @@ func quickSetup(v *viper.Viper, s *storage.Storage) error {
 			AceEditorTheme:        v.GetString("defaults.aceEditorTheme"),
 			Perm: users.Permissions{
 				Admin:    false,
-				Execute:  true,
 				Create:   true,
 				Rename:   true,
 				Modify:   true,
@@ -453,9 +444,7 @@ func quickSetup(v *viper.Viper, s *storage.Storage) error {
 			ChunkSize:  settings.DefaultTusChunkSize,
 			RetryCount: settings.DefaultTusRetryCount,
 		},
-		Commands: nil,
-		Shell:    nil,
-		Rules:    nil,
+		Rules: nil,
 	}
 
 	var err error
@@ -486,7 +475,6 @@ func quickSetup(v *viper.Viper, s *storage.Storage) error {
 		TokenExpirationTime:    v.GetString("tokenExpirationTime"),
 		EnableThumbnails:       !v.GetBool("disableThumbnails"),
 		ResizePreview:          !v.GetBool("disablePreviewResize"),
-		EnableExec:             !v.GetBool("disableExec"),
 		TypeDetectionByHeader:  !v.GetBool("disableTypeDetectionByHeader"),
 		ImageResolutionCal:     !v.GetBool("disableImageResolutionCalc"),
 		FollowExternalSymlinks: v.GetBool("followExternalSymlinks"),

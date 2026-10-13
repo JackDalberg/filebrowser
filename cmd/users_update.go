@@ -39,9 +39,7 @@ options you want to change.`,
 			return err
 		}
 
-		var (
-			user *users.User
-		)
+		var user *users.User
 		if id != 0 {
 			user, err = st.Users.Get("", false, id)
 		} else {
@@ -59,7 +57,6 @@ options you want to change.`,
 			RedirectAfterCopyMove: user.RedirectAfterCopyMove,
 			Perm:                  user.Perm,
 			Sorting:               user.Sorting,
-			Commands:              user.Commands,
 		}
 
 		err = getUserDefaults(flags, &defaults, false)
@@ -73,7 +70,6 @@ options you want to change.`,
 		user.SingleClick = defaults.SingleClick
 		user.RedirectAfterCopyMove = defaults.RedirectAfterCopyMove
 		user.Perm = defaults.Perm
-		user.Commands = defaults.Commands
 		user.Sorting = defaults.Sorting
 		user.LockPassword, err = flags.GetBool("lockPassword")
 		if err != nil {

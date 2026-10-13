@@ -23,7 +23,7 @@ import (
 	"github.com/filebrowser/filebrowser/v2/storage/bolt"
 )
 
-const databasePermissions = 0640
+const databasePermissions = 0o640
 
 func getAndParseFileMode(flags *pflag.FlagSet, name string) (fs.FileMode, error) {
 	mode, err := flags.GetString(name)
@@ -57,7 +57,7 @@ func dbExists(path string) (bool, error) {
 		d := filepath.Dir(path)
 		_, err = os.Stat(d)
 		if os.IsNotExist(err) {
-			if err := os.MkdirAll(d, 0700); err != nil {
+			if err := os.MkdirAll(d, 0o700); err != nil {
 				return false, err
 			}
 			return false, nil
@@ -247,16 +247,4 @@ func jsonYamlArg(cmd *cobra.Command, args []string) error {
 	default:
 		return errors.New("invalid format: " + ext)
 	}
-}
-
-// convertCmdStrToCmdArray checks if cmd string is blank (whitespace included)
-// then returns empty string array, else returns the split word array of cmd.
-// This is to ensure the result will never be []string{""}
-func convertCmdStrToCmdArray(cmd string) []string {
-	var cmdArray []string
-	trimmedCmdStr := strings.TrimSpace(cmd)
-	if trimmedCmdStr != "" {
-		cmdArray = strings.Split(trimmedCmdStr, " ")
-	}
-	return cmdArray
 }

@@ -18,9 +18,7 @@ import (
 	"github.com/filebrowser/filebrowser/v2/users"
 )
 
-var (
-	NonModifiableFieldsForNonAdmin = []string{"Username", "Scope", "LockPassword", "Perm", "Commands", "Rules"}
-)
+var NonModifiableFieldsForNonAdmin = []string{"Username", "Scope", "LockPassword", "Perm", "Rules"}
 
 type modifyUserRequest struct {
 	modifyRequest
@@ -184,7 +182,7 @@ var userPutHandler = withSelfOrAdmin(func(w http.ResponseWriter, r *http.Request
 	}
 
 	if d.settings.AuthMethod == auth.MethodJSONAuth {
-		var sensibleFields = map[string]struct{}{
+		sensibleFields := map[string]struct{}{
 			"all":          {},
 			"username":     {},
 			"password":     {},

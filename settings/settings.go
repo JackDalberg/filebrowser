@@ -10,34 +10,34 @@ import (
 	"github.com/filebrowser/filebrowser/v2/rules"
 )
 
-const DefaultUsersHomeBasePath = "/users"
-const DefaultLogoutPage = "/login"
-const DefaultMinimumPasswordLength = 12
-const DefaultFileMode = 0640
-const DefaultDirMode = 0750
+const (
+	DefaultUsersHomeBasePath     = "/users"
+	DefaultLogoutPage            = "/login"
+	DefaultMinimumPasswordLength = 12
+	DefaultFileMode              = 0o640
+	DefaultDirMode               = 0o750
+)
 
 // AuthMethod describes an authentication method.
 type AuthMethod string
 
 // Settings contain the main settings of the application.
 type Settings struct {
-	Key                   []byte              `json:"key"`
-	Signup                bool                `json:"signup"`
-	HideLoginButton       bool                `json:"hideLoginButton"`
-	CreateUserDir         bool                `json:"createUserDir"`
-	UserHomeBasePath      string              `json:"userHomeBasePath"`
-	Defaults              UserDefaults        `json:"defaults"`
-	AuthMethod            AuthMethod          `json:"authMethod"`
-	LogoutPage            string              `json:"logoutPage"`
-	Branding              Branding            `json:"branding"`
-	Tus                   Tus                 `json:"tus"`
-	Commands              map[string][]string `json:"commands"`
-	Shell                 []string            `json:"shell"`
-	Rules                 []rules.Rule        `json:"rules"`
-	MinimumPasswordLength uint                `json:"minimumPasswordLength"`
-	FileMode              fs.FileMode         `json:"fileMode"`
-	DirMode               fs.FileMode         `json:"dirMode"`
-	HideDotfiles          bool                `json:"hideDotfiles"`
+	Key                   []byte       `json:"key"`
+	Signup                bool         `json:"signup"`
+	HideLoginButton       bool         `json:"hideLoginButton"`
+	CreateUserDir         bool         `json:"createUserDir"`
+	UserHomeBasePath      string       `json:"userHomeBasePath"`
+	Defaults              UserDefaults `json:"defaults"`
+	AuthMethod            AuthMethod   `json:"authMethod"`
+	LogoutPage            string       `json:"logoutPage"`
+	Branding              Branding     `json:"branding"`
+	Tus                   Tus          `json:"tus"`
+	Rules                 []rules.Rule `json:"rules"`
+	MinimumPasswordLength uint         `json:"minimumPasswordLength"`
+	FileMode              fs.FileMode  `json:"fileMode"`
+	DirMode               fs.FileMode  `json:"dirMode"`
+	HideDotfiles          bool         `json:"hideDotfiles"`
 }
 
 // GetRules implements rules.Provider.

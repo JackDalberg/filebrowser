@@ -29,7 +29,6 @@ type User struct {
 	SingleClick           bool          `json:"singleClick"`
 	RedirectAfterCopyMove bool          `json:"redirectAfterCopyMove"`
 	Perm                  Permissions   `json:"perm"`
-	Commands              []string      `json:"commands"`
 	Sorting               files.Sorting `json:"sorting"`
 	Fs                    afero.Fs      `json:"-" yaml:"-"`
 	Rules                 []rules.Rule  `json:"rules"`
@@ -48,7 +47,6 @@ var checkableFields = []string{
 	"Password",
 	"Scope",
 	"ViewMode",
-	"Commands",
 	"Sorting",
 	"Rules",
 }
@@ -73,10 +71,6 @@ func (u *User) Clean(baseScope string, followExternalSymlinks bool, fields ...st
 		case "ViewMode":
 			if u.ViewMode == "" {
 				u.ViewMode = ListViewMode
-			}
-		case "Commands":
-			if u.Commands == nil {
-				u.Commands = []string{}
 			}
 		case "Sorting":
 			if u.Sorting.By == "" {
