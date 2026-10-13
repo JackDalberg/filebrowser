@@ -13,7 +13,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/afero"
 
-	"github.com/filebrowser/filebrowser/v2/diskcache"
 	"github.com/filebrowser/filebrowser/v2/settings"
 	"github.com/filebrowser/filebrowser/v2/storage"
 	"github.com/filebrowser/filebrowser/v2/storage/bolt"
@@ -91,7 +90,7 @@ func TestResourceCopyDoesNotDereferenceEscapingSymlink(t *testing.T) {
 		req.Header.Set("X-Auth", signed)
 
 		rec := httptest.NewRecorder()
-		handle(resourcePatchHandler(diskcache.NewNoOp()), "", st, &settings.Server{}).ServeHTTP(rec, req)
+		handle(resourcePatchHandler(), "", st, &settings.Server{}).ServeHTTP(rec, req)
 		t.Logf("copy status=%d body=%q", rec.Code, rec.Body.String())
 
 		// The escaping symlink's target content must never appear in scope.
@@ -174,7 +173,7 @@ func TestResourcePostRejectsDanglingSymlinkWriteEscape(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, "/evil?override=true", strings.NewReader("http-outside"))
 	req.Header.Set("X-Auth", signed)
 	rec := httptest.NewRecorder()
-	handle(resourcePostHandler(diskcache.NewNoOp()), "", st, &settings.Server{}).ServeHTTP(rec, req)
+	handle(resourcePostHandler(), "", st, &settings.Server{}).ServeHTTP(rec, req)
 
 	if _, statErr := os.Stat(outsideTarget); statErr == nil {
 		data, _ := os.ReadFile(outsideTarget)
@@ -216,7 +215,7 @@ func TestResourcePostCleanupDoesNotDeleteThroughSymlink(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, "/link/victim.txt", strings.NewReader("x"))
 	req.Header.Set("X-Auth", signed)
 	rec := httptest.NewRecorder()
-	handle(resourcePostHandler(diskcache.NewNoOp()), "", st, &settings.Server{}).ServeHTTP(rec, req)
+	handle(resourcePostHandler(), "", st, &settings.Server{}).ServeHTTP(rec, req)
 
 	if _, statErr := os.Stat(victim); statErr != nil {
 		t.Fatalf("VULNERABLE: out-of-scope victim.txt deleted by cleanup RemoveAll (status=%d): %v", rec.Code, statErr)

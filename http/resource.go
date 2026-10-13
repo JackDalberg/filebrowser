@@ -85,7 +85,7 @@ var resourceGetHandler = withUser(func(w http.ResponseWriter, r *http.Request, d
 	return renderJSON(w, r, file)
 })
 
-func resourceDeleteHandler(fileCache FileCache) handleFunc {
+func resourceDeleteHandler() handleFunc {
 	return withUser(func(_ http.ResponseWriter, r *http.Request, d *data) (int, error) {
 		if r.URL.Path == "/" || !d.user.Perm.Delete {
 			return http.StatusForbidden, nil
@@ -112,12 +112,6 @@ func resourceDeleteHandler(fileCache FileCache) handleFunc {
 			log.Printf("WARNING: Error(s) occurred while deleting associated shares with file: %s", err)
 		}
 
-		// delete thumbnails
-		err = delThumbs(r.Context(), fileCache, file)
-		if err != nil {
-			return errToStatus(err), err
-		}
-
 		err = d.user.Fs.RemoveAll(r.URL.Path)
 		if err != nil {
 			return errToStatus(err), err
@@ -127,7 +121,7 @@ func resourceDeleteHandler(fileCache FileCache) handleFunc {
 	})
 }
 
-func resourcePostHandler(fileCache FileCache) handleFunc {
+func resourcePostHandler() handleFunc {
 	return withUser(func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
 		if !d.user.Perm.Create || !d.Check(r.URL.Path) {
 			return http.StatusForbidden, nil
@@ -139,7 +133,8 @@ func resourcePostHandler(fileCache FileCache) handleFunc {
 			return errToStatus(err), err
 		}
 
-		file, err := files.NewFileInfo(&files.FileOptions{
+		// TODO(jack): Is this even used or just legacy?
+		_, err := files.NewFileInfo(&files.FileOptions{
 			Fs:         d.user.Fs,
 			Path:       r.URL.Path,
 			Modify:     d.user.Perm.Modify,
@@ -155,11 +150,6 @@ func resourcePostHandler(fileCache FileCache) handleFunc {
 			// Permission for overwriting the file
 			if !d.user.Perm.Modify {
 				return http.StatusForbidden, nil
-			}
-
-			err = delThumbs(r.Context(), fileCache, file)
-			if err != nil {
-				return errToStatus(err), err
 			}
 		}
 
@@ -202,7 +192,7 @@ var resourcePutHandler = withUser(func(w http.ResponseWriter, r *http.Request, d
 	return errToStatus(err), err
 })
 
-func resourcePatchHandler(fileCache FileCache) handleFunc {
+func resourcePatchHandler() handleFunc {
 	return withUser(func(_ http.ResponseWriter, r *http.Request, d *data) (int, error) {
 		src := r.URL.Path
 		dst := r.URL.Query().Get("destination")
@@ -250,7 +240,7 @@ func resourcePatchHandler(fileCache FileCache) handleFunc {
 			return errToStatus(err), err
 		}
 
-		err = patchAction(r.Context(), action, src, dst, d, fileCache)
+		err = patchAction(r.Context(), action, src, dst, d)
 
 		return errToStatus(err), err
 	})
@@ -357,18 +347,7 @@ func writeFile(afs afero.Fs, dst string, in io.Reader, fileMode, dirMode fs.File
 	return info, nil
 }
 
-func delThumbs(ctx context.Context, fileCache FileCache, file *files.FileInfo) error {
-	for _, previewSizeName := range PreviewSizeNames() {
-		size, _ := ParsePreviewSize(previewSizeName)
-		if err := fileCache.Delete(ctx, previewCacheKey(file, size)); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func patchAction(ctx context.Context, action, src, dst string, d *data, fileCache FileCache) error {
+func patchAction(ctx context.Context, action, src, dst string, d *data) error {
 	switch action {
 	case "copy":
 		if !d.user.Perm.Create {
@@ -383,7 +362,8 @@ func patchAction(ctx context.Context, action, src, dst string, d *data, fileCach
 		src = path.Clean("/" + src)
 		dst = path.Clean("/" + dst)
 
-		file, err := files.NewFileInfo(&files.FileOptions{
+		// TODO(jack): Is this even used or just legacy?
+		_, err := files.NewFileInfo(&files.FileOptions{
 			Fs:         d.user.Fs,
 			Path:       src,
 			Modify:     d.user.Perm.Modify,
@@ -391,12 +371,6 @@ func patchAction(ctx context.Context, action, src, dst string, d *data, fileCach
 			ReadHeader: false,
 			Checker:    d,
 		})
-		if err != nil {
-			return err
-		}
-
-		// delete thumbnails
-		err = delThumbs(ctx, fileCache, file)
 		if err != nil {
 			return err
 		}

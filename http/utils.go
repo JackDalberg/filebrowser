@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	libErrors "github.com/filebrowser/filebrowser/v2/errors"
-	imgErrors "github.com/filebrowser/filebrowser/v2/img"
 )
 
 // slashClean canonicalizes a virtual path to the absolute, "/"-separated,
@@ -58,7 +57,6 @@ func cleanSeparators(name, sep string) string {
 
 func renderJSON(w http.ResponseWriter, _ *http.Request, data interface{}) (int, error) {
 	marsh, err := json.Marshal(data)
-
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -90,8 +88,6 @@ func errToStatus(err error) int {
 		return http.StatusBadRequest
 	case errors.Is(err, libErrors.ErrRootUserDeletion):
 		return http.StatusForbidden
-	case errors.Is(err, imgErrors.ErrImageTooLarge):
-		return http.StatusRequestEntityTooLarge
 	default:
 		return http.StatusInternalServerError
 	}

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filebrowser/filebrowser/v2/diskcache"
 	"github.com/filebrowser/filebrowser/v2/settings"
 	"github.com/filebrowser/filebrowser/v2/storage"
 	"github.com/filebrowser/filebrowser/v2/users"
@@ -68,7 +67,7 @@ func TestRecursiveOperationsEnforceDescendantRules(t *testing.T) {
 
 	t.Run("copying the parent does not expose it", func(t *testing.T) {
 		userScope, st := scope(t)
-		rec := do(t, st, resourcePatchHandler(diskcache.NewNoOp()), http.MethodPatch, "/src?action=copy&destination=/dst")
+		rec := do(t, st, resourcePatchHandler(), http.MethodPatch, "/src?action=copy&destination=/dst")
 
 		if leaked := filepath.Join(userScope, "dst", "secret", "marker.txt"); exists(t, leaked) {
 			t.Fatalf("VULNERABLE: denied descendant copied to %s (status %d)", leaked, rec.Code)
@@ -80,7 +79,7 @@ func TestRecursiveOperationsEnforceDescendantRules(t *testing.T) {
 
 	t.Run("renaming the parent does not expose it", func(t *testing.T) {
 		userScope, st := scope(t)
-		rec := do(t, st, resourcePatchHandler(diskcache.NewNoOp()), http.MethodPatch, "/src?action=rename&destination=/moved")
+		rec := do(t, st, resourcePatchHandler(), http.MethodPatch, "/src?action=rename&destination=/moved")
 
 		if leaked := filepath.Join(userScope, "moved", "secret", "marker.txt"); exists(t, leaked) {
 			t.Fatalf("VULNERABLE: denied descendant moved to %s (status %d)", leaked, rec.Code)
@@ -95,7 +94,7 @@ func TestRecursiveOperationsEnforceDescendantRules(t *testing.T) {
 
 	t.Run("deleting the parent does not delete it", func(t *testing.T) {
 		userScope, st := scope(t)
-		rec := do(t, st, resourceDeleteHandler(diskcache.NewNoOp()), http.MethodDelete, "/src")
+		rec := do(t, st, resourceDeleteHandler(), http.MethodDelete, "/src")
 
 		if !exists(t, filepath.Join(userScope, "src", "secret", "marker.txt")) {
 			t.Fatalf("VULNERABLE: denied descendant deleted through its parent (status %d)", rec.Code)
@@ -107,7 +106,7 @@ func TestRecursiveOperationsEnforceDescendantRules(t *testing.T) {
 
 	t.Run("an entirely allowed tree still copies", func(t *testing.T) {
 		userScope, st := scope(t)
-		rec := do(t, st, resourcePatchHandler(diskcache.NewNoOp()), http.MethodPatch, "/clean?action=copy&destination=/clean-copy")
+		rec := do(t, st, resourcePatchHandler(), http.MethodPatch, "/clean?action=copy&destination=/clean-copy")
 
 		if rec.Code != http.StatusOK {
 			t.Fatalf("PATCH /clean?action=copy = %d, body=%q; want 200", rec.Code, rec.Body.String())

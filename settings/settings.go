@@ -55,11 +55,7 @@ type Server struct {
 	Port                   string `json:"port"`
 	Address                string `json:"address"`
 	Log                    string `json:"log"`
-	EnableThumbnails       bool   `json:"enableThumbnails"`
-	ResizePreview          bool   `json:"resizePreview"`
-	EnableExec             bool   `json:"enableExec"`
 	TypeDetectionByHeader  bool   `json:"typeDetectionByHeader"`
-	ImageResolutionCal     bool   `json:"imageResolutionCalculation"`
 	AuthHook               string `json:"authHook"`
 	TokenExpirationTime    string `json:"tokenExpirationTime"`
 	FollowExternalSymlinks bool   `json:"followExternalSymlinks"`

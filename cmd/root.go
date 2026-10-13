@@ -17,20 +17,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/filebrowser/filebrowser/v2/auth"
-	"github.com/filebrowser/filebrowser/v2/diskcache"
 	"github.com/filebrowser/filebrowser/v2/frontend"
 	fbhttp "github.com/filebrowser/filebrowser/v2/http"
-	"github.com/filebrowser/filebrowser/v2/img"
 	"github.com/filebrowser/filebrowser/v2/settings"
 	"github.com/filebrowser/filebrowser/v2/storage"
-	"github.com/filebrowser/filebrowser/v2/users"
 )
 
 var (
@@ -41,11 +36,7 @@ var (
 		"create-user-dir":                  "createUserDir",
 		"minimum-password-length":          "minimumPasswordLength",
 		"socket-perm":                      "socketPerm",
-		"disable-thumbnails":               "disableThumbnails",
-		"disable-preview-resize":           "disablePreviewResize",
 		"disable-type-detection-by-header": "disableTypeDetectionByHeader",
-		"img-processors":                   "imageProcessors",
-		"cache-dir":                        "cacheDir",
 		"redis-cache-url":                  "redisCacheUrl",
 		"token-expiration-time":            "tokenExpirationTime",
 		"baseurl":                          "baseURL",
@@ -88,9 +79,7 @@ func init() {
 	flags.String("username", "admin", "username for the first user when using quick setup")
 	flags.String("password", "", "hashed password for the first user when using quick setup")
 	flags.Uint32("socketPerm", 0o666, "unix socket file permissions")
-	flags.String("cacheDir", "", "file cache directory (disabled if empty)")
 	flags.String("redisCacheUrl", "", "redis cache URL (for multi-instance deployments), e.g. redis://user:pass@host:port")
-	flags.Int("imageProcessors", 4, "image processors count")
 	addServerFlags(flags)
 }
 
@@ -106,10 +95,7 @@ func addServerFlags(flags *pflag.FlagSet) {
 	flags.String("socket", "", "socket to listen to (cannot be used with address, port, cert nor key flags)")
 	flags.StringP("baseURL", "b", "", "base url")
 	flags.String("tokenExpirationTime", "2h", "user session timeout")
-	flags.Bool("disableThumbnails", false, "disable image thumbnails")
-	flags.Bool("disablePreviewResize", false, "disable resize of image previews")
 	flags.Bool("disableTypeDetectionByHeader", false, "disables type detection by reading file headers")
-	flags.Bool("disableImageResolutionCalc", false, "disables image resolution calculation by reading image files")
 	flags.Bool("followExternalSymlinks", false, "follow symlinks whose target is outside the user scope (unsafe)")
 }
 
@@ -128,8 +114,7 @@ by ourselves.
 For this command, all flags are available as environmental variables,
 except for "--config", which specifies the configuration file to use.
 The environment variables are prefixed by "FB_" followed by the flag name in
-UPPER_SNAKE_CASE. For example, the flag "--disablePreviewResize" is available
-as FB_DISABLE_PREVIEW_RESIZE.
+UPPER_SNAKE_CASE.
 
 If "--config" is not specified, File Browser will look for a configuration
 file named .filebrowser.{json, toml, yaml, yml} in the following directories:
@@ -156,26 +141,6 @@ the quick setup mode and a new database will be bootstrapped and a new
 user created with the credentials from options "username" and "password".`,
 	RunE: withViperAndStore(func(_ *cobra.Command, _ []string, v *viper.Viper, st *store) error {
 		if !st.databaseExisted {
-			err := quickSetup(v, st.Storage)
-			if err != nil {
-				return err
-			}
-		}
-
-		// build img service
-		imgWorkersCount := v.GetInt("imageProcessors")
-		if imgWorkersCount < 1 {
-			return errors.New("image resize workers count could not be < 1")
-		}
-		imageService := img.New(imgWorkersCount)
-
-		var fileCache diskcache.Interface = diskcache.NewNoOp()
-		cacheDir := v.GetString("cacheDir")
-		if cacheDir != "" {
-			if err := os.MkdirAll(cacheDir, 0o700); err != nil {
-				return fmt.Errorf("can't make directory %s: %w", cacheDir, err)
-			}
-			fileCache = diskcache.New(afero.NewOsFs(), cacheDir)
 		}
 
 		redisCacheURL := v.GetString("redisCacheUrl")
@@ -237,7 +202,7 @@ user created with the credentials from options "username" and "password".`,
 			panic(err)
 		}
 
-		handler, err := fbhttp.NewHandler(imageService, fileCache, uploadCache, st.Storage, server, assetsFs)
+		handler, err := fbhttp.NewHandler(uploadCache, st.Storage, server, assetsFs)
 		if err != nil {
 			return err
 		}
@@ -336,20 +301,8 @@ func getServerSettings(v *viper.Viper, st *storage.Storage) (*settings.Server, e
 		server.TokenExpirationTime = v.GetString("tokenExpirationTime")
 	}
 
-	if v.IsSet("disableThumbnails") {
-		server.EnableThumbnails = !v.GetBool("disableThumbnails")
-	}
-
-	if v.IsSet("disablePreviewResize") {
-		server.ResizePreview = !v.GetBool("disablePreviewResize")
-	}
-
 	if v.IsSet("disableTypeDetectionByHeader") {
 		server.TypeDetectionByHeader = !v.GetBool("disableTypeDetectionByHeader")
-	}
-
-	if v.IsSet("disableImageResolutionCalc") {
-		server.ImageResolutionCal = !v.GetBool("disableImageResolutionCalc")
 	}
 
 	if v.IsSet("followExternalSymlinks") {
@@ -363,13 +316,6 @@ func getServerSettings(v *viper.Viper, st *storage.Storage) (*settings.Server, e
 	// Do not use saved Socket if address was manually set.
 	if isAddrSet && server.Socket != "" {
 		server.Socket = ""
-	}
-
-	if server.EnableExec {
-		log.Println("WARNING: Command Runner feature enabled!")
-		log.Println("WARNING: This feature has known security vulnerabilities and should not")
-		log.Println("WARNING: you fully understand the risks involved. For more information")
-		log.Println("WARNING: read https://github.com/filebrowser/filebrowser/issues/5199")
 	}
 
 	if server.FollowExternalSymlinks {
@@ -410,112 +356,4 @@ func setupLog(logMethod string) {
 			MaxBackups: 10,
 		})
 	}
-}
-
-func quickSetup(v *viper.Viper, s *storage.Storage) error {
-	log.Println("Performing quick setup")
-
-	set := &settings.Settings{
-		Key:                   generateKey(),
-		Signup:                false,
-		HideLoginButton:       true,
-		CreateUserDir:         false,
-		MinimumPasswordLength: settings.DefaultMinimumPasswordLength,
-		UserHomeBasePath:      settings.DefaultUsersHomeBasePath,
-		Defaults: settings.UserDefaults{
-			Scope:                 ".",
-			Locale:                "en",
-			SingleClick:           false,
-			RedirectAfterCopyMove: true,
-			AceEditorTheme:        v.GetString("defaults.aceEditorTheme"),
-			Perm: users.Permissions{
-				Admin:    false,
-				Create:   true,
-				Rename:   true,
-				Modify:   true,
-				Delete:   true,
-				Share:    true,
-				Download: true,
-			},
-		},
-		AuthMethod: "",
-		Branding:   settings.Branding{},
-		Tus: settings.Tus{
-			ChunkSize:  settings.DefaultTusChunkSize,
-			RetryCount: settings.DefaultTusRetryCount,
-		},
-		Rules: nil,
-	}
-
-	var err error
-	if v.GetBool("noauth") {
-		set.AuthMethod = auth.MethodNoAuth
-		err = s.Auth.Save(&auth.NoAuth{})
-	} else {
-		set.AuthMethod = auth.MethodJSONAuth
-		err = s.Auth.Save(&auth.JSONAuth{})
-	}
-	if err != nil {
-		return err
-	}
-
-	err = s.Settings.Save(set)
-	if err != nil {
-		return err
-	}
-
-	ser := &settings.Server{
-		BaseURL:                v.GetString("baseURL"),
-		Port:                   v.GetString("port"),
-		Log:                    v.GetString("log"),
-		TLSKey:                 v.GetString("key"),
-		TLSCert:                v.GetString("cert"),
-		Address:                v.GetString("address"),
-		Root:                   v.GetString("root"),
-		TokenExpirationTime:    v.GetString("tokenExpirationTime"),
-		EnableThumbnails:       !v.GetBool("disableThumbnails"),
-		ResizePreview:          !v.GetBool("disablePreviewResize"),
-		TypeDetectionByHeader:  !v.GetBool("disableTypeDetectionByHeader"),
-		ImageResolutionCal:     !v.GetBool("disableImageResolutionCalc"),
-		FollowExternalSymlinks: v.GetBool("followExternalSymlinks"),
-	}
-
-	err = s.Settings.SaveServer(ser)
-	if err != nil {
-		return err
-	}
-
-	username := v.GetString("username")
-	password := v.GetString("password")
-
-	if password == "" {
-		var pwd string
-		pwd, err = users.RandomPwd(set.MinimumPasswordLength)
-		if err != nil {
-			return err
-		}
-
-		log.Printf("User '%s' initialized with randomly generated password: %s\n", username, pwd)
-		password, err = users.ValidateAndHashPwd(pwd, set.MinimumPasswordLength)
-		if err != nil {
-			return err
-		}
-	} else {
-		log.Printf("User '%s' initialize wth user-provided password\n", username)
-	}
-
-	if username == "" || password == "" {
-		log.Fatal("username and password cannot be empty during quick setup")
-	}
-
-	user := &users.User{
-		Username:     username,
-		Password:     password,
-		LockPassword: false,
-	}
-
-	set.Defaults.Apply(user)
-	user.Perm.Admin = true
-
-	return s.Users.Save(user)
 }

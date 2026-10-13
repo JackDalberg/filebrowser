@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filebrowser/filebrowser/v2/diskcache"
 	"github.com/filebrowser/filebrowser/v2/rules"
 	"github.com/filebrowser/filebrowser/v2/settings"
 	"github.com/filebrowser/filebrowser/v2/storage"
@@ -115,7 +114,7 @@ func TestCanonicalizeRequestPathKeepsTrailingSlash(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/newdir/", http.NoBody)
 		req.Header.Set("X-Auth", signed)
 		rec := httptest.NewRecorder()
-		handle(resourcePostHandler(diskcache.NewNoOp()), "", st, &settings.Server{}).ServeHTTP(rec, req)
+		handle(resourcePostHandler(), "", st, &settings.Server{}).ServeHTTP(rec, req)
 
 		info, err := os.Stat(filepath.Join(userScope, "newdir"))
 		if err != nil {

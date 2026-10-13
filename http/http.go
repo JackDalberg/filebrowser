@@ -19,8 +19,6 @@ type modifyRequest struct {
 }
 
 func NewHandler(
-	imgSvc ImgService,
-	fileCache FileCache,
 	uploadCache UploadCache,
 	store *storage.Storage,
 	server *settings.Server,
@@ -62,10 +60,10 @@ func NewHandler(
 
 	api.PathPrefix("/resources/recursive").Handler(monkey(resourceGetRecursiveHandler, "/api/resources/recursive")).Methods("GET")
 	api.PathPrefix("/resources").Handler(monkey(resourceGetHandler, "/api/resources")).Methods("GET")
-	api.PathPrefix("/resources").Handler(monkey(resourceDeleteHandler(fileCache), "/api/resources")).Methods("DELETE")
-	api.PathPrefix("/resources").Handler(monkey(resourcePostHandler(fileCache), "/api/resources")).Methods("POST")
+	api.PathPrefix("/resources").Handler(monkey(resourceDeleteHandler(), "/api/resources")).Methods("DELETE")
+	api.PathPrefix("/resources").Handler(monkey(resourcePostHandler(), "/api/resources")).Methods("POST")
 	api.PathPrefix("/resources").Handler(monkey(resourcePutHandler, "/api/resources")).Methods("PUT")
-	api.PathPrefix("/resources").Handler(monkey(resourcePatchHandler(fileCache), "/api/resources")).Methods("PATCH")
+	api.PathPrefix("/resources").Handler(monkey(resourcePatchHandler(), "/api/resources")).Methods("PATCH")
 
 	api.PathPrefix("/tus").Handler(monkey(tusPostHandler(uploadCache), "/api/tus")).Methods("POST")
 	api.PathPrefix("/tus").Handler(monkey(tusHeadHandler(uploadCache), "/api/tus")).Methods("HEAD", "GET")
@@ -83,8 +81,6 @@ func NewHandler(
 	api.Handle("/settings", monkey(settingsPutHandler, "")).Methods("PUT")
 
 	api.PathPrefix("/raw").Handler(monkey(rawHandler, "/api/raw")).Methods("GET")
-	api.PathPrefix("/preview/{size}/{path:.*}").
-		Handler(monkey(previewHandler(imgSvc, fileCache, server.EnableThumbnails, server.ResizePreview), "/api/preview")).Methods("GET")
 	api.PathPrefix("/search").Handler(monkey(searchHandler, "/api/search")).Methods("GET")
 	api.PathPrefix("/subtitle").Handler(monkey(subtitleHandler, "/api/subtitle")).Methods("GET")
 

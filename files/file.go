@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"hash"
-	"image"
 	"io"
 	"io/fs"
 	"log"
@@ -50,7 +49,6 @@ type FileInfo struct {
 	Checksums  map[string]string `json:"checksums,omitempty"`
 	Token      string            `json:"token,omitempty"`
 	currentDir []os.FileInfo     `json:"-"`
-	Resolution *ImageResolution  `json:"resolution,omitempty"`
 }
 
 // FileOptions are the options when getting a file info.
@@ -60,15 +58,9 @@ type FileOptions struct {
 	Modify     bool
 	Expand     bool
 	ReadHeader bool
-	CalcImgRes bool
 	Token      string
 	Checker    rules.Checker
 	Content    bool
-}
-
-type ImageResolution struct {
-	Width  int `json:"width"`
-	Height int `json:"height"`
 }
 
 // NewFileInfo creates a File object from a path and a given user. This File
@@ -91,13 +83,13 @@ func NewFileInfo(opts *FileOptions) (*FileInfo, error) {
 
 	if opts.Expand {
 		if file.IsDir {
-			if err := file.readListing(opts.Checker, opts.ReadHeader, opts.CalcImgRes); err != nil {
+			if err := file.readListing(opts.Checker, opts.ReadHeader); err != nil {
 				return nil, err
 			}
 			return file, nil
 		}
 
-		err = file.detectType(opts.Modify, opts.Content, true, opts.CalcImgRes)
+		err = file.detectType(opts.Modify, opts.Content, true)
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +211,7 @@ func (i *FileInfo) RealPath() string {
 	return i.Path
 }
 
-func (i *FileInfo) detectType(modify, saveContent, readHeader bool, calcImgRes bool) error {
+func (i *FileInfo) detectType(modify, saveContent, readHeader bool) error {
 	if IsNamedPipe(i.Mode) {
 		i.Type = "blob"
 		return nil
@@ -250,14 +242,6 @@ func (i *FileInfo) detectType(modify, saveContent, readHeader bool, calcImgRes b
 		return nil
 	case strings.HasPrefix(mimetype, "image"):
 		i.Type = "image"
-		if calcImgRes {
-			resolution, err := calculateImageResolution(i.Fs, i.Path)
-			if err != nil {
-				log.Printf("Error calculating image resolution: %v", err)
-			} else {
-				i.Resolution = resolution
-			}
-		}
 		return nil
 	case strings.HasSuffix(mimetype, "pdf"):
 		i.Type = "pdf"
@@ -284,28 +268,6 @@ func (i *FileInfo) detectType(modify, saveContent, readHeader bool, calcImgRes b
 	}
 
 	return nil
-}
-
-func calculateImageResolution(fSys afero.Fs, filePath string) (*ImageResolution, error) {
-	file, err := fSys.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if cErr := file.Close(); cErr != nil {
-			log.Printf("Failed to close file: %v", cErr)
-		}
-	}()
-
-	config, _, err := image.DecodeConfig(file)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ImageResolution{
-		Width:  config.Width,
-		Height: config.Height,
-	}, nil
 }
 
 func (i *FileInfo) readFirstBytes() []byte {
@@ -390,7 +352,7 @@ func (i *FileInfo) addSubtitle(fPath string) {
 	i.Subtitles = append(i.Subtitles, fPath)
 }
 
-func (i *FileInfo) readListing(checker rules.Checker, readHeader bool, calcImgRes bool) error {
+func (i *FileInfo) readListing(checker rules.Checker, readHeader bool) error {
 	dir, err := readDir(i.Fs, i.Path)
 	if err != nil {
 		return err
@@ -443,15 +405,6 @@ func (i *FileInfo) readListing(checker rules.Checker, readHeader bool, calcImgRe
 			currentDir: dir,
 		}
 
-		if !file.IsDir && strings.HasPrefix(mime.TypeByExtension(file.Extension), "image/") && calcImgRes {
-			resolution, err := calculateImageResolution(file.Fs, file.Path)
-			if err != nil {
-				log.Printf("Error calculating resolution for image %s: %v", file.Path, err)
-			} else {
-				file.Resolution = resolution
-			}
-		}
-
 		if file.IsDir {
 			listing.NumDirs++
 		} else {
@@ -460,7 +413,7 @@ func (i *FileInfo) readListing(checker rules.Checker, readHeader bool, calcImgRe
 			if isInvalidLink {
 				file.Type = "invalid_link"
 			} else {
-				err := file.detectType(true, false, readHeader, calcImgRes)
+				err := file.detectType(true, false, readHeader)
 				if err != nil {
 					return err
 				}
