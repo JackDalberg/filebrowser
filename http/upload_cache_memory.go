@@ -11,8 +11,6 @@ import (
 const uploadCacheTTL = 3 * time.Minute
 
 // UploadCache is an interface for tracking active uploads.
-// Allows for different backends (e.g. in-memory or redis)
-// to support both single instance and multi replica deployments.
 type UploadCache interface {
 	// Register stores an upload with its expected file size. remove is called if
 	// the upload expires before completion, to delete the partial file; it must

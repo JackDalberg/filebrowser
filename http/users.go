@@ -188,7 +188,6 @@ var userPutHandler = withSelfOrAdmin(func(w http.ResponseWriter, r *http.Request
 			"password":     {},
 			"scope":        {},
 			"lockPassword": {},
-			"commands":     {},
 			"perm":         {},
 		}
 

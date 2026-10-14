@@ -57,7 +57,7 @@ type FileOptions struct {
 
 // NewFileInfo creates a File object from a path and a given user. This File
 // object will be automatically filled depending on if it is a directory
-// or a file. If it's a video file, it will also detect any subtitles.
+// or a file.
 func NewFileInfo(opts *FileOptions) (*FileInfo, error) {
 	if !opts.Checker.Check(opts.Path) {
 		return nil, os.ErrPermission

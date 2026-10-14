@@ -56,14 +56,9 @@ filebrowser [flags]
   -t, --cert string                    tls certificate
   -c, --config string                  config file path
   -d, --database string                database path (default "./filebrowser.db")
-      --disableExec                    disables Command Runner feature (default true)
-      --disableImageResolutionCalc     disables image resolution calculation by reading image files
-      --disablePreviewResize           disable resize of image previews
-      --disableThumbnails              disable image thumbnails
       --disableTypeDetectionByHeader   disables type detection by reading file headers
       --followExternalSymlinks         follow symlinks whose target is outside the user scope (unsafe)
   -h, --help                           help for filebrowser
-      --imageProcessors int            image processors count (default 4)
   -k, --key string                     tls key
   -l, --log string                     log output (default "stdout")
       --noauth                         use the noauth auther when using quick setup
@@ -78,11 +73,9 @@ filebrowser [flags]
 
 ## See Also
 
-* [filebrowser cmds](filebrowser-cmds.md)	 - Command runner management utility
 * [filebrowser completion](filebrowser-completion.md)	 - Generate the autocompletion script for the specified shell
 * [filebrowser config](filebrowser-config.md)	 - Configuration management utility
 * [filebrowser hash](filebrowser-hash.md)	 - Hashes a password
-* [filebrowser rules](filebrowser-rules.md)	 - Rules management utility
 * [filebrowser users](filebrowser-users.md)	 - Users management utility
 * [filebrowser version](filebrowser-version.md)	 - Print the version number
 

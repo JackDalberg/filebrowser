@@ -79,7 +79,6 @@ if ($users.ContainsKey($username) -and $users[$username] -eq $password) {
 
     Write-Output "user.perm.admin=true"    # Set admin role (all permissions)
     #You can also define specific permissions like this:
-    Write-Output "user.perm.execute=true"
     Write-Output "user.perm.create=true"
     Write-Output "user.perm.rename=true"
     Write-Output "user.perm.modify=true"
@@ -135,7 +134,6 @@ When `hook.action=auth` is returned, the hook may also define additional user at
 1. Permissions
 ```
 user.perm.admin=true
-user.perm.execute=true
 user.perm.create=true
 user.perm.rename=true
 user.perm.modify=true
