@@ -34,16 +34,16 @@ options you want to change.`,
 			return err
 		}
 
-		s, err := st.Settings.Get()
+		s, err := st.GetSettings()
 		if err != nil {
 			return err
 		}
 
 		var user *users.User
 		if id != 0 {
-			user, err = st.Users.Get("", false, id)
+			user, err = st.GetUser("", false, id)
 		} else {
-			user, err = st.Users.Get("", false, username)
+			user, err = st.GetUser("", false, username)
 		}
 		if err != nil {
 			return err
@@ -97,7 +97,7 @@ options you want to change.`,
 			}
 		}
 
-		err = st.Users.Update(user)
+		err = st.UpdateUser(user)
 		if err != nil {
 			return err
 		}

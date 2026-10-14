@@ -1,16 +1,15 @@
-package bolt
+package storage
 
 import (
+	"io/fs"
 	"os"
 	"sort"
 	"testing"
 
-	"github.com/asdine/storm/v3"
-
 	"github.com/JackDalberg/filebrowser/share"
 )
 
-func newTestShareBackend(t *testing.T) shareBackend {
+func newTestShareBackend(t *testing.T) *Storage {
 	t.Helper()
 
 	f, err := os.CreateTemp(t.TempDir(), "shares-*.db")
@@ -19,19 +18,19 @@ func newTestShareBackend(t *testing.T) shareBackend {
 	}
 	_ = f.Close()
 
-	db, err := storm.Open(f.Name())
+	st, err := Open(f.Name(), fs.ModeTemporary)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = st.Close() })
 
-	return shareBackend{db: db}
+	return st
 }
 
-func remainingHashes(t *testing.T, s shareBackend) []string {
+func remainingHashes(t *testing.T, s *Storage) []string {
 	t.Helper()
 
-	links, err := s.All()
+	links, err := s.AllShares()
 	if err != nil {
 		t.Fatalf("All returned error: %v", err)
 	}
@@ -60,7 +59,7 @@ func TestDeleteWithPathPrefix(t *testing.T) {
 		{Hash: "u2-a-child", Path: "/a/child.txt", UserID: 2},
 	}
 	for _, l := range links {
-		if err := s.Save(l); err != nil {
+		if err := s.SaveShare(l); err != nil {
 			t.Fatalf("failed to save link %s: %v", l.Hash, err)
 		}
 	}
@@ -68,7 +67,7 @@ func TestDeleteWithPathPrefix(t *testing.T) {
 	// User 1 deletes their directory /a. Only user 1's /a and its descendants
 	// should be removed; /abc (sibling sharing a byte prefix) and all of user
 	// 2's links must remain.
-	if err := s.DeleteWithPathPrefix("/a", 1); err != nil {
+	if err := s.DeleteShareWithPathPrefix("/a", 1); err != nil {
 		t.Fatalf("DeleteWithPathPrefix returned error: %v", err)
 	}
 
@@ -99,14 +98,14 @@ func TestDeleteWithPathPrefixTrailingSlash(t *testing.T) {
 		{Hash: "u2-a", Path: "/a", UserID: 2},     // other user, must remain
 	}
 	for _, l := range links {
-		if err := s.Save(l); err != nil {
+		if err := s.SaveShare(l); err != nil {
 			t.Fatalf("failed to save link %s: %v", l.Hash, err)
 		}
 	}
 
 	// Delete with a trailing slash, as the resource delete handler does for a
 	// directory request like DELETE /api/resources/a/.
-	if err := s.DeleteWithPathPrefix("/a/", 1); err != nil {
+	if err := s.DeleteShareWithPathPrefix("/a/", 1); err != nil {
 		t.Fatalf("DeleteWithPathPrefix returned error: %v", err)
 	}
 
@@ -129,7 +128,7 @@ func TestDeleteWithPathPrefixNoMatch(t *testing.T) {
 
 	// No links exist at all: the storm Prefix query returns ErrNotFound, which
 	// must be treated as a no-op rather than surfaced as an error.
-	if err := s.DeleteWithPathPrefix("/a", 1); err != nil {
+	if err := s.DeleteShareWithPathPrefix("/a", 1); err != nil {
 		t.Fatalf("DeleteWithPathPrefix on empty store returned error: %v", err)
 	}
 }

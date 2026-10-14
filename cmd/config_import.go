@@ -37,7 +37,7 @@ The path must be for a json or yaml file.`,
 		var key []byte
 		var err error
 		if st.databaseExisted {
-			settings, settingErr := st.Settings.Get()
+			settings, settingErr := st.GetSettings()
 			if settingErr != nil {
 				return settingErr
 			}
@@ -57,17 +57,17 @@ The path must be for a json or yaml file.`,
 		}
 
 		file.Settings.Key = key
-		err = st.Settings.Save(file.Settings)
+		err = st.SaveSettings(file.Settings)
 		if err != nil {
 			return err
 		}
 
-		err = st.Settings.SaveServer(file.Server)
+		err = st.SaveServerConfig(file.Server)
 		if err != nil {
 			return err
 		}
 
-		var rawAuther = file.Auther
+		rawAuther := file.Auther
 
 		var auther auth.Auther
 		var autherErr error
@@ -96,7 +96,7 @@ The path must be for a json or yaml file.`,
 			return autherErr
 		}
 
-		err = st.Auth.Save(auther)
+		err = st.SaveAuther(auther)
 		if err != nil {
 			return err
 		}

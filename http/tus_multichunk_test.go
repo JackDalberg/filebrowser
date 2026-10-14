@@ -19,10 +19,10 @@ import (
 // newTusTestServer mounts the TUS handlers behind a real HTTP server, under the
 // same "/api/tus" prefix used in production, so tests exercise connection
 // handling and header round-tripping instead of a bare ResponseRecorder.
-func newTusTestServer(t *testing.T, st *storage.Storage, cache UploadCache) *httptest.Server {
+func newTusTestServer(t *testing.T, st *storage.Storage, cache UploadCache, root string) *httptest.Server {
 	t.Helper()
 
-	server := &settings.Server{}
+	server := &settings.Server{Root: root}
 	post := handle(tusPostHandler(cache), "/api/tus", st, server)
 	head := handle(tusHeadHandler(cache), "/api/tus", st, server)
 	patch := handle(tusPatchHandler(cache), "/api/tus", st, server)
@@ -70,7 +70,7 @@ func newTusTestFixture(t *testing.T) *tusTestFixture {
 	cache := newMemoryUploadCache()
 	t.Cleanup(cache.Close)
 
-	srv := newTusTestServer(t, st, cache)
+	srv := newTusTestServer(t, st, cache, userScope)
 	return &tusTestFixture{
 		srv:    srv,
 		client: srv.Client(),

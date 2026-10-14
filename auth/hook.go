@@ -27,7 +27,7 @@ type hookCred struct {
 
 // HookAuth is a hook implementation of an Auther.
 type HookAuth struct {
-	Users    users.Store        `json:"-"`
+	Users    userStore          `json:"-"`
 	Settings *settings.Settings `json:"-"`
 	Server   *settings.Server   `json:"-"`
 	Cred     hookCred           `json:"-"`
@@ -36,7 +36,7 @@ type HookAuth struct {
 }
 
 // Auth authenticates the user via a json in content body.
-func (a *HookAuth) Auth(r *http.Request, usr users.Store, stg *settings.Settings, srv *settings.Server) (*users.User, error) {
+func (a *HookAuth) Auth(r *http.Request, usr userStore, stg *settings.Settings, srv *settings.Server) (*users.User, error) {
 	var cred hookCred
 
 	if r.Body == nil {
@@ -68,7 +68,7 @@ func (a *HookAuth) Auth(r *http.Request, usr users.Store, stg *settings.Settings
 	case "block":
 		return nil, os.ErrPermission
 	case "pass":
-		u, err := a.Users.Get(a.Server.Root, a.Server.FollowExternalSymlinks, a.Cred.Username)
+		u, err := a.Users.GetUser(a.Server.Root, a.Server.FollowExternalSymlinks, a.Cred.Username)
 		if err != nil || !users.CheckPwd(a.Cred.Password, u.Password) {
 			return nil, os.ErrPermission
 		}
@@ -129,7 +129,7 @@ func (a *HookAuth) GetValues(s string) {
 
 // SaveUser updates the existing user or creates a new one when not found
 func (a *HookAuth) SaveUser() (*users.User, error) {
-	u, err := a.Users.Get(a.Server.Root, a.Server.FollowExternalSymlinks, a.Cred.Username)
+	u, err := a.Users.GetUser(a.Server.Root, a.Server.FollowExternalSymlinks, a.Cred.Username)
 	if err != nil && !errors.Is(err, fberrors.ErrNotExist) {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func (a *HookAuth) SaveUser() (*users.User, error) {
 		}
 		log.Printf("user: %s, home dir: [%s].", u.Username, u.Scope)
 
-		if err := a.Users.SaveProvisioned(u, derivedScope); err != nil {
+		if err := a.Users.SaveProvisionedUser(u, derivedScope); err != nil {
 			return nil, err
 		}
 	} else if p := !users.CheckPwd(a.Cred.Password, u.Password); len(a.Fields.Values) > 1 || p {
@@ -181,7 +181,7 @@ func (a *HookAuth) SaveUser() (*users.User, error) {
 		}
 
 		// update user with provided fields
-		err := a.Users.Update(u)
+		err := a.Users.UpdateUser(u)
 		if err != nil {
 			return nil, err
 		}

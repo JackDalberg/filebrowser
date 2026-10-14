@@ -65,9 +65,9 @@ var shareListHandler = withPermShare(func(w http.ResponseWriter, r *http.Request
 		err error
 	)
 	if d.user.Perm.Admin {
-		s, err = d.store.Share.All()
+		s, err = d.store.AllShares()
 	} else {
-		s, err = d.store.Share.FindByUserID(d.user.ID)
+		s, err = d.store.SharesForUser(d.user.ID)
 	}
 	if errors.Is(err, fberrors.ErrNotExist) {
 		return renderJSON(w, r, []*shareResponse{})
@@ -95,7 +95,7 @@ var shareGetsHandler = withPermShare(func(w http.ResponseWriter, r *http.Request
 	if d.user.Perm.Admin {
 		s, err = getSharesForAdminPath(d, r.URL.Path)
 	} else {
-		s, err = d.store.Share.Gets(r.URL.Path, d.user.ID)
+		s, err = d.store.SharesForPath(r.URL.Path, d.user.ID)
 	}
 	if errors.Is(err, fberrors.ErrNotExist) {
 		return renderJSON(w, r, []*shareResponse{})
@@ -109,7 +109,7 @@ var shareGetsHandler = withPermShare(func(w http.ResponseWriter, r *http.Request
 })
 
 func getSharesForAdminPath(d *data, path string) ([]*share.Link, error) {
-	links, err := d.store.Share.All()
+	links, err := d.store.AllShares()
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func getSharesForAdminPath(d *data, path string) ([]*share.Link, error) {
 	for _, link := range links {
 		owner, ok := owners[link.UserID]
 		if !ok {
-			owner, err = d.store.Users.Get(d.server.Root, d.server.FollowExternalSymlinks, link.UserID)
+			owner, err = d.store.GetUser(d.server.Root, d.server.FollowExternalSymlinks, link.UserID)
 			if err != nil && !errors.Is(err, fberrors.ErrNotExist) {
 				return nil, err
 			}
@@ -142,7 +142,7 @@ var shareDeleteHandler = withPermShare(func(_ http.ResponseWriter, r *http.Reque
 		return http.StatusBadRequest, nil
 	}
 
-	link, err := d.store.Share.GetByHash(hash)
+	link, err := d.store.GetShareByHash(hash)
 	if err != nil {
 		return errToStatus(err), err
 	}
@@ -151,7 +151,7 @@ var shareDeleteHandler = withPermShare(func(_ http.ResponseWriter, r *http.Reque
 		return http.StatusForbidden, nil
 	}
 
-	err = d.store.Share.Delete(hash)
+	err = d.store.DeleteShare(hash)
 	return errToStatus(err), err
 })
 
@@ -230,7 +230,7 @@ var sharePostHandler = withPermShare(func(w http.ResponseWriter, r *http.Request
 		Token:        token,
 	}
 
-	if err := d.store.Share.Save(s); err != nil {
+	if err := d.store.SaveShare(s); err != nil {
 		return http.StatusInternalServerError, err
 	}
 

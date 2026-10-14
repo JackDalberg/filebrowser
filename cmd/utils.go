@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/asdine/storm/v3"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
@@ -20,7 +19,6 @@ import (
 
 	"github.com/JackDalberg/filebrowser/settings"
 	"github.com/JackDalberg/filebrowser/storage"
-	"github.com/JackDalberg/filebrowser/storage/bolt"
 )
 
 const databasePermissions = 0o640
@@ -173,19 +171,14 @@ func withViperAndStore(fn func(cmd *cobra.Command, args []string, v *viper.Viper
 
 		log.Println("Using database: " + path)
 
-		db, err := storm.Open(path, storm.BoltOptions(databasePermissions, nil))
+		st, err := storage.Open(path, databasePermissions)
 		if err != nil {
 			return err
 		}
-		defer db.Close()
-
-		storage, err := bolt.NewStorage(db)
-		if err != nil {
-			return err
-		}
+		defer st.Close()
 
 		store := &store{
-			Storage:         storage,
+			Storage:         st,
 			databaseExisted: exists,
 		}
 

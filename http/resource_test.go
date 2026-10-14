@@ -1,6 +1,7 @@
 package fbhttp
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,13 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asdine/storm/v3"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/spf13/afero"
 
 	"github.com/JackDalberg/filebrowser/settings"
 	"github.com/JackDalberg/filebrowser/storage"
-	"github.com/JackDalberg/filebrowser/storage/bolt"
 	"github.com/JackDalberg/filebrowser/users"
 )
 
@@ -45,28 +43,18 @@ func TestResourceCopyDoesNotDereferenceEscapingSymlink(t *testing.T) {
 
 	key := []byte("test-signing-key")
 
-	db, err := storm.Open(filepath.Join(t.TempDir(), "db"))
+	st, err := storage.Open(filepath.Join(t.TempDir(), "db"), fs.ModeTemporary)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = st.Close() })
 
-	st, err := bolt.NewStorage(db)
-	if err != nil {
-		t.Fatalf("failed to get storage: %v", err)
-	}
 	perm := users.Permissions{Create: true, Modify: true, Download: true, Rename: true}
-	if err := st.Users.Save(&users.User{Username: "u", Password: "pw", Perm: perm}); err != nil {
+	if err := st.SaveUser(&users.User{Username: "u", Password: "pw", Perm: perm}); err != nil {
 		t.Fatalf("failed to save user: %v", err)
 	}
-	if err := st.Settings.Save(&settings.Settings{Key: key}); err != nil {
+	if err := st.SaveSettings(&settings.Settings{Key: key}); err != nil {
 		t.Fatalf("failed to save settings: %v", err)
-	}
-	// The user's scope is the real on-disk userScope. customFSUser.Get wraps it
-	// in a ScopedFs, mirroring production (users.User init).
-	st.Users = &customFSUser{
-		Store: st.Users,
-		fs:    afero.NewBasePathFs(afero.NewOsFs(), userScope),
 	}
 
 	signed := signToken(t, perm, key)
@@ -75,7 +63,7 @@ func TestResourceCopyDoesNotDereferenceEscapingSymlink(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "/srcdir/link.txt", http.NoBody)
 		req.Header.Set("X-Auth", signed)
 		rec := httptest.NewRecorder()
-		handle(rawHandler, "", st, &settings.Server{}).ServeHTTP(rec, req)
+		handle(rawHandler, "", st, &settings.Server{Root: userScope}).ServeHTTP(rec, req)
 		if rec.Code == http.StatusOK {
 			t.Fatalf("VULNERABLE: direct raw read of escaping symlink returned 200, body=%q", rec.Body.String())
 		}
@@ -90,7 +78,7 @@ func TestResourceCopyDoesNotDereferenceEscapingSymlink(t *testing.T) {
 		req.Header.Set("X-Auth", signed)
 
 		rec := httptest.NewRecorder()
-		handle(resourcePatchHandler(), "", st, &settings.Server{}).ServeHTTP(rec, req)
+		handle(resourcePatchHandler(), "", st, &settings.Server{Root: userScope}).ServeHTTP(rec, req)
 		t.Logf("copy status=%d body=%q", rec.Code, rec.Body.String())
 
 		// The escaping symlink's target content must never appear in scope.
@@ -122,25 +110,18 @@ func signToken(t *testing.T, perm users.Permissions, key []byte) string {
 // production. Used by the symlink scope-escape regression tests below.
 func scopedUserStorage(t *testing.T, userScope string, perm users.Permissions, key []byte) *storage.Storage {
 	t.Helper()
-	db, err := storm.Open(filepath.Join(t.TempDir(), "db"))
+
+	st, err := storage.Open(filepath.Join(t.TempDir(), "db"), fs.ModeTemporary)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = st.Close() })
 
-	st, err := bolt.NewStorage(db)
-	if err != nil {
-		t.Fatalf("failed to get storage: %v", err)
-	}
-	if err := st.Users.Save(&users.User{Username: "u", Password: "pw", Perm: perm}); err != nil {
+	if err := st.SaveUser(&users.User{Username: "u", Password: "pw", Perm: perm, Scope: "/"}); err != nil {
 		t.Fatalf("failed to save user: %v", err)
 	}
-	if err := st.Settings.Save(&settings.Settings{Key: key}); err != nil {
+	if err := st.SaveSettings(&settings.Settings{Key: key}); err != nil {
 		t.Fatalf("failed to save settings: %v", err)
-	}
-	st.Users = &customFSUser{
-		Store: st.Users,
-		fs:    afero.NewBasePathFs(afero.NewOsFs(), userScope),
 	}
 	return st
 }
@@ -173,7 +154,7 @@ func TestResourcePostRejectsDanglingSymlinkWriteEscape(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, "/evil?override=true", strings.NewReader("http-outside"))
 	req.Header.Set("X-Auth", signed)
 	rec := httptest.NewRecorder()
-	handle(resourcePostHandler(), "", st, &settings.Server{}).ServeHTTP(rec, req)
+	handle(resourcePostHandler(), "", st, &settings.Server{Root: userScope}).ServeHTTP(rec, req)
 
 	if _, statErr := os.Stat(outsideTarget); statErr == nil {
 		data, _ := os.ReadFile(outsideTarget)
@@ -215,7 +196,7 @@ func TestResourcePostCleanupDoesNotDeleteThroughSymlink(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, "/link/victim.txt", strings.NewReader("x"))
 	req.Header.Set("X-Auth", signed)
 	rec := httptest.NewRecorder()
-	handle(resourcePostHandler(), "", st, &settings.Server{}).ServeHTTP(rec, req)
+	handle(resourcePostHandler(), "", st, &settings.Server{Root: userScope}).ServeHTTP(rec, req)
 
 	if _, statErr := os.Stat(victim); statErr != nil {
 		t.Fatalf("VULNERABLE: out-of-scope victim.txt deleted by cleanup RemoveAll (status=%d): %v", rec.Code, statErr)

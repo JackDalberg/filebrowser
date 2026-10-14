@@ -1,6 +1,7 @@
 package fbhttp
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -8,12 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asdine/storm/v3"
 	"github.com/golang-jwt/jwt/v5"
 
 	fbAuth "github.com/JackDalberg/filebrowser/auth"
 	"github.com/JackDalberg/filebrowser/settings"
-	"github.com/JackDalberg/filebrowser/storage/bolt"
+	"github.com/JackDalberg/filebrowser/storage"
 	"github.com/JackDalberg/filebrowser/users"
 )
 
@@ -24,17 +24,13 @@ import (
 func TestSignupRejectsCollidingNormalizedScope(t *testing.T) {
 	root := t.TempDir()
 
-	db, err := storm.Open(filepath.Join(t.TempDir(), "db"))
+	st, err := storage.Open(filepath.Join(t.TempDir(), "db"), fs.ModeTemporary)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = st.Close() })
 
-	st, err := bolt.NewStorage(db)
-	if err != nil {
-		t.Fatalf("failed to get storage: %v", err)
-	}
-	if err := st.Settings.Save(&settings.Settings{
+	if err := st.SaveSettings(&settings.Settings{
 		Key:                   []byte("test-signing-key"),
 		Signup:                true,
 		CreateUserDir:         true,
@@ -65,7 +61,7 @@ func TestSignupRejectsCollidingNormalizedScope(t *testing.T) {
 	}
 
 	// The shared scope must still be owned solely by the first user.
-	owner, err := st.Users.GetByScope("/users/teamone-x")
+	owner, err := st.GetUserByScope("/users/teamone-x")
 	if err != nil {
 		t.Fatalf("expected first user to own the scope: %v", err)
 	}
@@ -84,16 +80,17 @@ func TestExpiredTokenNeedsProxyAssertion(t *testing.T) {
 
 	key := []byte("test-signing-key")
 	perm := users.Permissions{Download: true}
-	st := scopedUserStorage(t, t.TempDir(), perm, key)
+	userScope := t.TempDir()
+	st := scopedUserStorage(t, userScope, perm, key)
 
-	if err := st.Settings.Save(&settings.Settings{
+	if err := st.SaveSettings(&settings.Settings{
 		Key:        key,
 		AuthMethod: fbAuth.MethodProxyAuth,
 		LogoutPage: "/logged-out",
 	}); err != nil {
 		t.Fatalf("failed to save settings: %v", err)
 	}
-	if err := st.Auth.Save(&fbAuth.ProxyAuth{Header: proxyHeader}); err != nil {
+	if err := st.SaveAuther(&fbAuth.ProxyAuth{Header: proxyHeader}); err != nil {
 		t.Fatalf("failed to save auther: %v", err)
 	}
 
@@ -121,7 +118,7 @@ func TestExpiredTokenNeedsProxyAssertion(t *testing.T) {
 			req.Header.Set(proxyHeader, proxyUser)
 		}
 		rec := httptest.NewRecorder()
-		handle(protected, "", st, &settings.Server{}).ServeHTTP(rec, req)
+		handle(protected, "", st, &settings.Server{Root: userScope}).ServeHTTP(rec, req)
 		return rec
 	}
 

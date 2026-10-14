@@ -1,6 +1,7 @@
 package fbhttp
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -8,13 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asdine/storm/v3"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/spf13/afero"
 
-	"github.com/JackDalberg/filebrowser/files"
 	"github.com/JackDalberg/filebrowser/settings"
-	"github.com/JackDalberg/filebrowser/storage/bolt"
+	"github.com/JackDalberg/filebrowser/storage"
 	"github.com/JackDalberg/filebrowser/users"
 )
 
@@ -37,29 +35,21 @@ func TestTusHandlersRejectSymlinkScopeEscape(t *testing.T) {
 
 	key := []byte("test-signing-key")
 
-	db, err := storm.Open(filepath.Join(t.TempDir(), "db"))
+	st, err := storage.Open(filepath.Join(t.TempDir(), "db"), fs.ModeTemporary)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = st.Close() })
 
-	st, err := bolt.NewStorage(db)
-	if err != nil {
-		t.Fatalf("failed to get storage: %v", err)
-	}
-	if err := st.Users.Save(&users.User{
+	if err := st.SaveUser(&users.User{
 		Username: "u",
 		Password: "pw",
 		Perm:     users.Permissions{Create: true, Modify: true},
 	}); err != nil {
 		t.Fatalf("failed to save user: %v", err)
 	}
-	if err := st.Settings.Save(&settings.Settings{Key: key}); err != nil {
+	if err := st.SaveSettings(&settings.Settings{Key: key}); err != nil {
 		t.Fatalf("failed to save settings: %v", err)
-	}
-	st.Users = &customFSUser{
-		Store: st.Users,
-		fs:    files.NewScopedFs(afero.NewOsFs(), userScope),
 	}
 
 	// Forge a valid auth token for user ID 1.
@@ -105,7 +95,7 @@ func TestTusHandlersRejectSymlinkScopeEscape(t *testing.T) {
 			}
 
 			recorder := httptest.NewRecorder()
-			handler := handle(tc.handler, "", st, &settings.Server{})
+			handler := handle(tc.handler, "", st, &settings.Server{Root: userScope})
 			handler.ServeHTTP(recorder, req)
 
 			if recorder.Code != http.StatusForbidden {

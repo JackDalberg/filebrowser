@@ -19,17 +19,17 @@ you want to change. Other options will remain unchanged.`,
 		flags := cmd.Flags()
 
 		// Read existing config
-		set, err := st.Settings.Get()
+		set, err := st.GetSettings()
 		if err != nil {
 			return err
 		}
 
-		ser, err := st.Settings.GetServer()
+		ser, err := st.GetServerConfig()
 		if err != nil {
 			return err
 		}
 
-		auther, err := st.Auth.Get(set.AuthMethod)
+		auther, err := st.GetAuther(set.AuthMethod)
 		if err != nil {
 			return err
 		}
@@ -41,17 +41,17 @@ you want to change. Other options will remain unchanged.`,
 		}
 
 		// Save updated config
-		err = st.Auth.Save(auther)
+		err = st.SaveAuther(auther)
 		if err != nil {
 			return err
 		}
 
-		err = st.Settings.Save(set)
+		err = st.SaveSettings(set)
 		if err != nil {
 			return err
 		}
 
-		err = st.Settings.SaveServer(ser)
+		err = st.SaveServerConfig(ser)
 		if err != nil {
 			return err
 		}

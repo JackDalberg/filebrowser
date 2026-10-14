@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,20 +12,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/JackDalberg/filebrowser/files"
 	"github.com/JackDalberg/filebrowser/settings"
 	"github.com/JackDalberg/filebrowser/share"
 	"github.com/JackDalberg/filebrowser/storage"
-	"github.com/JackDalberg/filebrowser/storage/bolt"
 	"github.com/JackDalberg/filebrowser/users"
-	"github.com/asdine/storm/v3"
-	"github.com/spf13/afero"
 )
 
 // symlinkShareStorage builds a storage whose single user is rooted at a real
 // on-disk scope containing a public share "/shared" with a symlinked
 // descendant "link -> ../private". Skips the test if symlinks are unavailable.
-func symlinkShareStorage(t *testing.T) *storage.Storage {
+func symlinkShareStorage(t *testing.T) (*storage.Storage, string) {
 	t.Helper()
 	scope := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(scope, "shared"), 0o755); err != nil {
@@ -40,34 +37,26 @@ func symlinkShareStorage(t *testing.T) *storage.Storage {
 		t.Skipf("cannot create symlink on this platform: %v", err)
 	}
 
-	db, err := storm.Open(filepath.Join(t.TempDir(), "db"))
+	st, err := storage.Open(filepath.Join(t.TempDir(), "db"), fs.ModeTemporary)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = st.Close() })
 
-	st, err := bolt.NewStorage(db)
-	if err != nil {
-		t.Fatalf("failed to get storage: %v", err)
-	}
-	if err := st.Share.Save(&share.Link{Hash: "h", UserID: 1, Path: "/shared"}); err != nil {
+	if err := st.SaveShare(&share.Link{Hash: "h", UserID: 1, Path: "/shared"}); err != nil {
 		t.Fatalf("failed to save share: %v", err)
 	}
-	if err := st.Users.Save(&users.User{
+	if err := st.SaveUser(&users.User{
 		Username: "username",
 		Password: "pw",
 		Perm:     users.Permissions{Share: true, Download: true},
 	}); err != nil {
 		t.Fatalf("failed to save user: %v", err)
 	}
-	if err := st.Settings.Save(&settings.Settings{Key: []byte("key")}); err != nil {
+	if err := st.SaveSettings(&settings.Settings{Key: []byte("key")}); err != nil {
 		t.Fatalf("failed to save settings: %v", err)
 	}
-	st.Users = &customFSUser{
-		Store: st.Users,
-		fs:    files.NewScopedFs(afero.NewOsFs(), scope),
-	}
-	return st
+	return st, scope
 }
 
 // Reproduces GHSA-hf77-9m7w-fq8q: a public directory share whose subtree
@@ -86,11 +75,11 @@ func TestPublicShareSymlinkDescendantDisclosure(t *testing.T) {
 	for name, tc := range cases {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			st := symlinkShareStorage(t)
+			st, scope := symlinkShareStorage(t)
 
 			req := newHTTPRequest(t, func(r *http.Request) { r.URL.Path = tc.path })
 			recorder := httptest.NewRecorder()
-			handler := handle(tc.handler, "", st, &settings.Server{})
+			handler := handle(tc.handler, "", st, &settings.Server{Root: scope})
 			handler.ServeHTTP(recorder, req)
 
 			result := recorder.Result()
@@ -108,11 +97,11 @@ func TestPublicShareSymlinkDescendantDisclosure(t *testing.T) {
 // The listing of the public share root must omit the escaping symlink "link"
 // entirely (no target metadata leak).
 func TestPublicShareSymlinkListingOmitsEscapingLink(t *testing.T) {
-	st := symlinkShareStorage(t)
+	st, scope := symlinkShareStorage(t)
 
 	req := newHTTPRequest(t, func(r *http.Request) { r.URL.Path = "h/" })
 	recorder := httptest.NewRecorder()
-	handler := handle(publicShareHandler, "", st, &settings.Server{})
+	handler := handle(publicShareHandler, "", st, &settings.Server{Root: scope})
 	handler.ServeHTTP(recorder, req)
 
 	result := recorder.Result()
@@ -145,37 +134,27 @@ func TestPublicShareSymlinkFollowedWhenEnabled(t *testing.T) {
 		t.Skipf("cannot create symlink on this platform: %v", err)
 	}
 
-	db, err := storm.Open(filepath.Join(t.TempDir(), "db"))
+	st, err := storage.Open(filepath.Join(t.TempDir(), "db"), fs.ModeTemporary)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	t.Cleanup(func() { _ = st.Close() })
 
-	st, err := bolt.NewStorage(db)
-	if err != nil {
-		t.Fatalf("failed to get storage: %v", err)
-	}
-	if err := st.Share.Save(&share.Link{Hash: "h", UserID: 1, Path: "/shared"}); err != nil {
+	if err := st.SaveShare(&share.Link{Hash: "h", UserID: 1, Path: "/shared"}); err != nil {
 		t.Fatalf("failed to save share: %v", err)
 	}
-	if err := st.Users.Save(&users.User{
+	if err := st.SaveUser(&users.User{
 		Username: "username",
 		Password: "pw",
 		Perm:     users.Permissions{Share: true, Download: true},
 	}); err != nil {
 		t.Fatalf("failed to save user: %v", err)
 	}
-	if err := st.Settings.Save(&settings.Settings{Key: []byte("key")}); err != nil {
+	if err := st.SaveSettings(&settings.Settings{Key: []byte("key")}); err != nil {
 		t.Fatalf("failed to save settings: %v", err)
 	}
-	// Follow-external mode: the user filesystem is a bare BasePathFs.
-	st.Users = &customFSUser{
-		Store:          st.Users,
-		fs:             files.NewFs(afero.NewOsFs(), scope, true),
-		followExternal: true,
-	}
 
-	srv := &settings.Server{FollowExternalSymlinks: true}
+	srv := &settings.Server{FollowExternalSymlinks: true, Root: scope}
 
 	// The file behind the symlink downloads.
 	req := newHTTPRequest(t, func(r *http.Request) { r.URL.Path = "h/link/data.txt" })
@@ -210,12 +189,12 @@ func TestPublicShareSymlinkFollowedWhenEnabled(t *testing.T) {
 // public share as a zip must not pull in files reached through a symlinked
 // descendant.
 func TestPublicShareSymlinkArchiveDisclosure(t *testing.T) {
-	st := symlinkShareStorage(t)
+	st, scope := symlinkShareStorage(t)
 
 	// Request the whole share root as an archive.
 	req := newHTTPRequest(t, func(r *http.Request) { r.URL.Path = "h/" })
 	recorder := httptest.NewRecorder()
-	handler := handle(publicDlHandler, "", st, &settings.Server{})
+	handler := handle(publicDlHandler, "", st, &settings.Server{Root: scope})
 	handler.ServeHTTP(recorder, req)
 
 	result := recorder.Result()

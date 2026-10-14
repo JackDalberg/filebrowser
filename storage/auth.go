@@ -1,20 +1,13 @@
-package bolt
+package storage
 
 import (
-	"github.com/asdine/storm/v3"
-
 	"github.com/JackDalberg/filebrowser/auth"
 	fberrors "github.com/JackDalberg/filebrowser/errors"
 	"github.com/JackDalberg/filebrowser/settings"
 )
 
-type authBackend struct {
-	db *storm.DB
-}
-
-func (s authBackend) Get(t settings.AuthMethod) (auth.Auther, error) {
+func (s *Storage) GetAuther(t settings.AuthMethod) (auth.Auther, error) {
 	var auther auth.Auther
-
 	switch t {
 	case auth.MethodJSONAuth:
 		auther = &auth.JSONAuth{}
@@ -28,9 +21,9 @@ func (s authBackend) Get(t settings.AuthMethod) (auth.Auther, error) {
 		return nil, fberrors.ErrInvalidAuthMethod
 	}
 
-	return auther, get(s.db, "auther", auther)
+	return auther, s.configGet("auther", auther)
 }
 
-func (s authBackend) Save(a auth.Auther) error {
-	return save(s.db, "auther", a)
+func (s *Storage) SaveAuther(a auth.Auther) error {
+	return s.configSet("auther", a)
 }

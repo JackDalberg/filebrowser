@@ -14,15 +14,15 @@ var configCatCmd = &cobra.Command{
 	Long:  `Prints the configuration.`,
 	Args:  cobra.NoArgs,
 	RunE: withStore(func(_ *cobra.Command, _ []string, st *store) error {
-		set, err := st.Settings.Get()
+		set, err := st.GetSettings()
 		if err != nil {
 			return err
 		}
-		ser, err := st.Settings.GetServer()
+		ser, err := st.GetServerConfig()
 		if err != nil {
 			return err
 		}
-		auther, err := st.Auth.Get(set.AuthMethod)
+		auther, err := st.GetAuther(set.AuthMethod)
 		if err != nil {
 			return err
 		}

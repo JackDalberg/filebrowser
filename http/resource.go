@@ -107,7 +107,7 @@ func resourceDeleteHandler() handleFunc {
 			return errToStatus(err), err
 		}
 
-		err = d.store.Share.DeleteWithPathPrefix(file.Path, d.user.ID)
+		err = d.store.DeleteShareWithPathPrefix(file.Path, d.user.ID)
 		if err != nil {
 			log.Printf("WARNING: Error(s) occurred while deleting associated shares with file: %s", err)
 		}

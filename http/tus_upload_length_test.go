@@ -29,8 +29,8 @@ func TestTusPatchEnforcesUploadLength(t *testing.T) {
 
 	cache := newMemoryUploadCache()
 	t.Cleanup(cache.Close)
-	post := handle(tusPostHandler(cache), "", st, &settings.Server{})
-	patch := handle(tusPatchHandler(cache), "", st, &settings.Server{})
+	post := handle(tusPostHandler(cache), "", st, &settings.Server{Root: userScope})
+	patch := handle(tusPatchHandler(cache), "", st, &settings.Server{Root: userScope})
 
 	patchReq := func(body string) *httptest.ResponseRecorder {
 		req, _ := http.NewRequest(http.MethodPatch, "/file.txt", strings.NewReader(body))

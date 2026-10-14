@@ -18,16 +18,16 @@ type ProxyAuth struct {
 }
 
 // Auth authenticates the user via an HTTP header.
-func (a ProxyAuth) Auth(r *http.Request, usr users.Store, setting *settings.Settings, srv *settings.Server) (*users.User, error) {
+func (a ProxyAuth) Auth(r *http.Request, usr userStore, setting *settings.Settings, srv *settings.Server) (*users.User, error) {
 	username := r.Header.Get(a.Header)
-	user, err := usr.Get(srv.Root, srv.FollowExternalSymlinks, username)
+	user, err := usr.GetUser(srv.Root, srv.FollowExternalSymlinks, username)
 	if errors.Is(err, fberrors.ErrNotExist) {
 		return a.createUser(usr, setting, srv, username)
 	}
 	return user, err
 }
 
-func (a ProxyAuth) createUser(usr users.Store, setting *settings.Settings, srv *settings.Server, username string) (*users.User, error) {
+func (a ProxyAuth) createUser(usr userStore, setting *settings.Settings, srv *settings.Server, username string) (*users.User, error) {
 	const randomPasswordLength = settings.DefaultMinimumPasswordLength + 10
 	pwd, err := users.RandomPwd(randomPasswordLength)
 	if err != nil {
@@ -53,7 +53,7 @@ func (a ProxyAuth) createUser(usr users.Store, setting *settings.Settings, srv *
 		return nil, err
 	}
 
-	if err = usr.SaveProvisioned(user, derivedScope); err != nil {
+	if err = usr.SaveProvisionedUser(user, derivedScope); err != nil {
 		return nil, err
 	}
 

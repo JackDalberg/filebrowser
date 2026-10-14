@@ -69,7 +69,7 @@ func withSelfOrAdmin(fn handleFunc) handleFunc {
 }
 
 var usersGetHandler = withAdmin(func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
-	users, err := d.store.Users.Gets(d.server.Root, d.server.FollowExternalSymlinks)
+	users, err := d.store.ListUsers(d.server.Root, d.server.FollowExternalSymlinks)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -86,7 +86,7 @@ var usersGetHandler = withAdmin(func(w http.ResponseWriter, r *http.Request, d *
 })
 
 var userGetHandler = withSelfOrAdmin(func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
-	u, err := d.store.Users.Get(d.server.Root, d.server.FollowExternalSymlinks, d.raw.(uint))
+	u, err := d.store.GetUser(d.server.Root, d.server.FollowExternalSymlinks, d.raw.(uint))
 	if errors.Is(err, fberrors.ErrNotExist) {
 		return http.StatusNotFound, err
 	}
@@ -121,7 +121,7 @@ var userDeleteHandler = withSelfOrAdmin(func(_ http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	err := d.store.Users.Delete(d.raw.(uint))
+	err := d.store.DeleteUser(d.raw.(uint))
 	if err != nil {
 		return errToStatus(err), err
 	}
@@ -166,7 +166,7 @@ var userPostHandler = withAdmin(func(w http.ResponseWriter, r *http.Request, d *
 	req.Data.Scope = userHome
 	log.Printf("user: %s, home dir: [%s].", req.Data.Username, userHome)
 
-	err = d.store.Users.Save(req.Data)
+	err = d.store.SaveUser(req.Data)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -225,7 +225,7 @@ var userPutHandler = withSelfOrAdmin(func(w http.ResponseWriter, r *http.Request
 			}
 		} else {
 			var suser *users.User
-			suser, err = d.store.Users.Get(d.server.Root, d.server.FollowExternalSymlinks, d.raw.(uint))
+			suser, err = d.store.GetUser(d.server.Root, d.server.FollowExternalSymlinks, d.raw.(uint))
 			if err != nil {
 				return http.StatusInternalServerError, err
 			}
@@ -257,7 +257,7 @@ var userPutHandler = withSelfOrAdmin(func(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	err = d.store.Users.Update(req.Data, req.Which...)
+	err = d.store.UpdateUser(req.Data, req.Which...)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

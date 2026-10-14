@@ -242,7 +242,7 @@ user created with the credentials from options "username" and "password".`,
 }
 
 func getServerSettings(v *viper.Viper, st *storage.Storage) (*settings.Server, error) {
-	server, err := st.Settings.GetServer()
+	server, err := st.GetServerConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +319,7 @@ func getServerSettings(v *viper.Viper, st *storage.Storage) (*settings.Server, e
 		log.Println("WARNING: you fully understand and trust the contents of every user scope.")
 	}
 
-	if set, err := st.Settings.Get(); err == nil && set.Signup {
+	if set, err := st.GetSettings(); err == nil && set.Signup {
 		scope := strings.TrimSpace(set.Defaults.Scope)
 		scopeIsRoot := scope == "" || scope == "." || scope == "/"
 

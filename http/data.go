@@ -88,7 +88,7 @@ func handle(fn handleFunc, prefix string, store *storage.Storage, server *settin
 			w.Header().Set(k, v)
 		}
 
-		settings, err := store.Settings.Get()
+		settings, err := store.GetSettings()
 		if err != nil {
 			log.Fatalf("ERROR: couldn't get settings: %v\n", err)
 			return

@@ -18,7 +18,7 @@ var usersAddCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	RunE: withStore(func(cmd *cobra.Command, args []string, st *store) error {
 		flags := cmd.Flags()
-		s, err := st.Settings.Get()
+		s, err := st.GetSettings()
 		if err != nil {
 			return err
 		}
@@ -54,14 +54,14 @@ var usersAddCmd = &cobra.Command{
 
 		s.Defaults.Apply(user)
 
-		servSettings, err := st.Settings.GetServer()
+		servSettings, err := st.GetServerConfig()
 		if err != nil {
 			return err
 		}
 		// since getUserDefaults() polluted s.Defaults.Scope
 		// which makes the Scope not the one saved in the db
 		// we need the right s.Defaults.Scope here
-		s2, err := st.Settings.Get()
+		s2, err := st.GetSettings()
 		if err != nil {
 			return err
 		}
@@ -72,7 +72,7 @@ var usersAddCmd = &cobra.Command{
 		}
 		user.Scope = userHome
 
-		err = st.Users.Save(user)
+		err = st.SaveUser(user)
 		if err != nil {
 			return err
 		}

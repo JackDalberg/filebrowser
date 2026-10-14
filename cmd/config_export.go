@@ -16,17 +16,17 @@ json or yaml file. This exported configuration can be changed,
 and imported again with 'config import' command.`,
 	Args: jsonYamlArg,
 	RunE: withStore(func(_ *cobra.Command, args []string, st *store) error {
-		settings, err := st.Settings.Get()
+		settings, err := st.GetSettings()
 		if err != nil {
 			return err
 		}
 
-		server, err := st.Settings.GetServer()
+		server, err := st.GetServerConfig()
 		if err != nil {
 			return err
 		}
 
-		auther, err := st.Auth.Get(settings.AuthMethod)
+		auther, err := st.GetAuther(settings.AuthMethod)
 		if err != nil {
 			return err
 		}

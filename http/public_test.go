@@ -2,19 +2,18 @@ package fbhttp
 
 import (
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/JackDalberg/filebrowser/files"
 	"github.com/JackDalberg/filebrowser/rules"
 	"github.com/JackDalberg/filebrowser/settings"
 	"github.com/JackDalberg/filebrowser/share"
-	"github.com/JackDalberg/filebrowser/storage/bolt"
+	"github.com/JackDalberg/filebrowser/storage"
 	"github.com/JackDalberg/filebrowser/users"
-	"github.com/asdine/storm/v3"
-	"github.com/spf13/afero"
 )
 
 func TestPublicShareHandlerAuthentication(t *testing.T) {
@@ -88,32 +87,24 @@ func TestPublicShareHandlerAuthentication(t *testing.T) {
 
 	for name, tc := range testCases {
 		for handlerName, handler := range map[string]handleFunc{"public share handler": publicShareHandler, "public dl handler": publicDlHandler} {
-			name, tc, handlerName, handler := name, tc, handlerName, handler
 			t.Run(fmt.Sprintf("%s: %s", handlerName, name), func(t *testing.T) {
 				t.Parallel()
 
-				dbPath := filepath.Join(t.TempDir(), "db")
-				db, err := storm.Open(dbPath)
+				st, err := storage.Open(filepath.Join(t.TempDir(), "db"), fs.ModeTemporary)
 				if err != nil {
 					t.Fatalf("failed to open db: %v", err)
 				}
+				t.Cleanup(func() { _ = st.Close() })
 
-				t.Cleanup(func() {
-					if err := db.Close(); err != nil {
-						t.Errorf("failed to close db: %v", err)
-					}
-				})
+				scope := t.TempDir()
 
-				storage, err := bolt.NewStorage(db)
-				if err != nil {
-					t.Fatalf("failed to get storage: %v", err)
-				}
-				if err := storage.Share.Save(tc.share); err != nil {
+				if err := st.SaveShare(tc.share); err != nil {
 					t.Fatalf("failed to save share: %v", err)
 				}
-				if err := storage.Users.Save(&users.User{
+				if err := st.SaveUser(&users.User{
 					Username: "username",
 					Password: "pw",
+					Scope:    "/",
 					Perm: users.Permissions{
 						Share:    tc.sharePerm,
 						Download: tc.downloadPerm,
@@ -121,17 +112,12 @@ func TestPublicShareHandlerAuthentication(t *testing.T) {
 				}); err != nil {
 					t.Fatalf("failed to save user: %v", err)
 				}
-				if err := storage.Settings.Save(&settings.Settings{Key: []byte("key")}); err != nil {
+				if err := st.SaveSettings(&settings.Settings{Key: []byte("key")}); err != nil {
 					t.Fatalf("failed to save settings: %v", err)
 				}
 
-				storage.Users = &customFSUser{
-					Store: storage.Users,
-					fs:    &afero.MemMapFs{},
-				}
-
 				recorder := httptest.NewRecorder()
-				handler := handle(handler, "", storage, &settings.Server{})
+				handler := handle(handler, "", st, &settings.Server{Root: scope})
 
 				handler.ServeHTTP(recorder, tc.req)
 				result := recorder.Result()
@@ -184,31 +170,34 @@ func TestPublicShareHandlerRules(t *testing.T) {
 	}
 
 	for name, tc := range testCases {
-		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-
-			dbPath := filepath.Join(t.TempDir(), "db")
-			db, err := storm.Open(dbPath)
+			st, err := storage.Open(filepath.Join(t.TempDir(), "db"), fs.ModeTemporary)
 			if err != nil {
 				t.Fatalf("failed to open db: %v", err)
 			}
-			t.Cleanup(func() {
-				if err := db.Close(); err != nil {
-					t.Errorf("failed to close db: %v", err)
-				}
-			})
+			t.Cleanup(func() { _ = st.Close() })
 
-			storage, err := bolt.NewStorage(db)
-			if err != nil {
-				t.Fatalf("failed to get storage: %v", err)
+			scope := t.TempDir()
+			for _, dir := range []string{"projects/private", "projects/public"} {
+				if err := os.MkdirAll(filepath.Join(scope, dir), 0o755); err != nil {
+					t.Fatalf("failed to create dir: %v", err)
+				}
 			}
-			if err := storage.Share.Save(&share.Link{Hash: "h", UserID: 1, Path: "/projects"}); err != nil {
+			if err := os.WriteFile(filepath.Join(scope, "projects/private/secret.txt"), []byte("top secret"), 0o600); err != nil {
+				t.Fatalf("failed to write secret file: %v", err)
+			}
+			if err := os.WriteFile(filepath.Join(scope, "projects/public/readme.txt"), []byte("hello"), 0o600); err != nil {
+				t.Fatalf("failed to write public file: %v", err)
+			}
+
+			if err := st.SaveShare(&share.Link{Hash: "h", UserID: 1, Path: "/projects"}); err != nil {
 				t.Fatalf("failed to save share: %v", err)
 			}
-			if err := storage.Users.Save(&users.User{
+			if err := st.SaveUser(&users.User{
 				Username: "username",
 				Password: "pw",
+				Scope:    "/",
 				Perm:     users.Permissions{Share: true, Download: true},
 				Rules: []rules.Rule{
 					{Allow: false, Path: "/projects/private"},
@@ -216,33 +205,14 @@ func TestPublicShareHandlerRules(t *testing.T) {
 			}); err != nil {
 				t.Fatalf("failed to save user: %v", err)
 			}
-			if err := storage.Settings.Save(&settings.Settings{Key: []byte("key")}); err != nil {
+			if err := st.SaveSettings(&settings.Settings{Key: []byte("key")}); err != nil {
 				t.Fatalf("failed to save settings: %v", err)
-			}
-
-			fs := files.NewScopedFs(afero.NewOsFs(), t.TempDir())
-			if err := fs.MkdirAll("/projects/private", 0o755); err != nil {
-				t.Fatalf("failed to create private dir: %v", err)
-			}
-			if err := fs.MkdirAll("/projects/public", 0o755); err != nil {
-				t.Fatalf("failed to create public dir: %v", err)
-			}
-			if err := afero.WriteFile(fs, "/projects/private/secret.txt", []byte("top secret"), 0o600); err != nil {
-				t.Fatalf("failed to write secret file: %v", err)
-			}
-			if err := afero.WriteFile(fs, "/projects/public/readme.txt", []byte("hello"), 0o600); err != nil {
-				t.Fatalf("failed to write public file: %v", err)
-			}
-
-			storage.Users = &customFSUser{
-				Store: storage.Users,
-				fs:    fs,
 			}
 
 			req := newHTTPRequest(t, func(r *http.Request) { r.URL.Path = tc.path })
 
 			recorder := httptest.NewRecorder()
-			handler := handle(tc.handler, "", storage, &settings.Server{})
+			handler := handle(tc.handler, "", st, &settings.Server{Root: scope})
 
 			handler.ServeHTTP(recorder, req)
 			result := recorder.Result()
@@ -264,29 +234,4 @@ func newHTTPRequest(t *testing.T, requestModifiers ...func(*http.Request)) *http
 		modify(r)
 	}
 	return r
-}
-
-type customFSUser struct {
-	users.Store
-	fs afero.Fs
-	// followExternal mirrors Server.FollowExternalSymlinks: when set, the
-	// provided fs is used as-is (a bare BasePathFs that follows symlinks);
-	// otherwise it is wrapped in a symlink-confining ScopedFs.
-	followExternal bool
-}
-
-func (cu *customFSUser) Get(baseScope string, followExternalSymlinks bool, id interface{}) (*users.User, error) {
-	user, err := cu.Store.Get(baseScope, followExternalSymlinks, id)
-	if err != nil {
-		return nil, err
-	}
-	// Inject a filesystem rooted at the test's temp scope, standing in for the
-	// one users.User.Clean would build in production.
-	if cu.followExternal {
-		user.Fs = cu.fs
-	} else {
-		user.Fs = files.NewScopedFs(cu.fs, "/")
-	}
-
-	return user, nil
 }

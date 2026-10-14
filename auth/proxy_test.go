@@ -14,10 +14,17 @@ type mockUserStore struct {
 	users map[string]*users.User
 }
 
-func (m *mockUserStore) Get(_ string, _ bool, id interface{}) (*users.User, error) {
-	if v, ok := id.(string); ok {
+func (m *mockUserStore) GetUser(_ string, _ bool, id any) (*users.User, error) {
+	switch v := id.(type) {
+	case string:
 		if u, ok := m.users[v]; ok {
 			return u, nil
+		}
+	case uint:
+		for _, u := range m.users {
+			if u.ID == v {
+				return u, nil
+			}
 		}
 	}
 	return nil, fberrors.ErrNotExist
@@ -32,24 +39,17 @@ func (m *mockUserStore) GetByScope(scope string) (*users.User, error) {
 	return nil, fberrors.ErrNotExist
 }
 
-func (m *mockUserStore) Gets(_ string, _ bool) ([]*users.User, error) { return nil, nil }
-func (m *mockUserStore) Update(_ *users.User, _ ...string) error      { return nil }
-func (m *mockUserStore) Save(user *users.User) error {
-	m.users[user.Username] = user
-	return nil
-}
+func (m *mockUserStore) UpdateUser(_ *users.User, _ ...string) error { return nil }
 
-func (m *mockUserStore) SaveProvisioned(user *users.User, derivedScope bool) error {
+func (m *mockUserStore) SaveProvisionedUser(user *users.User, derivedScope bool) error {
 	if derivedScope {
 		if _, err := m.GetByScope(user.Scope); err == nil {
 			return fberrors.ErrExist
 		}
 	}
-	return m.Save(user)
+	m.users[user.Username] = user
+	return nil
 }
-
-func (m *mockUserStore) Delete(_ interface{}) error { return nil }
-func (m *mockUserStore) LastUpdate(_ uint) int64    { return 0 }
 
 func TestProxyAuthCreateUserRestrictsDefaults(t *testing.T) {
 	t.Parallel()

@@ -24,7 +24,7 @@ import (
 func handleWithStaticData(w http.ResponseWriter, _ *http.Request, d *data, fSys fs.FS, file, contentType string) (int, error) {
 	w.Header().Set("Content-Type", contentType)
 
-	auther, err := d.store.Auth.Get(d.settings.AuthMethod)
+	auther, err := d.store.GetAuther(d.settings.AuthMethod)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -63,7 +63,7 @@ func handleWithStaticData(w http.ResponseWriter, _ *http.Request, d *data, fSys 
 	}
 
 	if d.settings.AuthMethod == auth.MethodJSONAuth {
-		raw, err := d.store.Auth.Get(d.settings.AuthMethod)
+		raw, err := d.store.GetAuther(d.settings.AuthMethod)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}

@@ -36,14 +36,14 @@ var findUsers = withStore(func(_ *cobra.Command, args []string, st *store) error
 	if len(args) == 1 {
 		username, id := parseUsernameOrID(args[0])
 		if username != "" {
-			user, err = st.Users.Get("", false, username)
+			user, err = st.GetUser("", false, username)
 		} else {
-			user, err = st.Users.Get("", false, id)
+			user, err = st.GetUser("", false, id)
 		}
 
 		list = []*users.User{user}
 	} else {
-		list, err = st.Users.Gets("", false)
+		list, err = st.ListUsers("", false)
 	}
 
 	if err != nil {

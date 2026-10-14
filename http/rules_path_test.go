@@ -17,7 +17,7 @@ import (
 func denyRuleStorage(t *testing.T, userScope, denyPath string, perm users.Permissions, key []byte) *storage.Storage {
 	t.Helper()
 	st := scopedUserStorage(t, userScope, perm, key)
-	if err := st.Settings.Save(&settings.Settings{
+	if err := st.SaveSettings(&settings.Settings{
 		Key:   key,
 		Rules: []rules.Rule{{Path: denyPath, Allow: false}},
 	}); err != nil {
@@ -46,7 +46,7 @@ func TestRuleDeniesCaseVariantWhenFsIsCaseInsensitive(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, path, http.NoBody)
 		req.Header.Set("X-Auth", signed)
 		rec := httptest.NewRecorder()
-		handle(rawHandler, "", st, &settings.Server{CaseInsensitiveFs: caseInsensitive}).ServeHTTP(rec, req)
+		handle(rawHandler, "", st, &settings.Server{CaseInsensitiveFs: caseInsensitive, Root: userScope}).ServeHTTP(rec, req)
 		return rec
 	}
 
@@ -92,7 +92,7 @@ func TestRuleDeniesTraversalToDeniedPath(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/allow/../Secret.txt", http.NoBody)
 	req.Header.Set("X-Auth", signToken(t, perm, key))
 	rec := httptest.NewRecorder()
-	handle(rawHandler, "", st, &settings.Server{}).ServeHTTP(rec, req)
+	handle(rawHandler, "", st, &settings.Server{Root: userScope}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("VULNERABLE: GET /allow/../Secret.txt = %d, body=%q; want 403", rec.Code, rec.Body.String())
@@ -114,7 +114,7 @@ func TestCanonicalizeRequestPathKeepsTrailingSlash(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPost, "/newdir/", http.NoBody)
 		req.Header.Set("X-Auth", signed)
 		rec := httptest.NewRecorder()
-		handle(resourcePostHandler(), "", st, &settings.Server{}).ServeHTTP(rec, req)
+		handle(resourcePostHandler(), "", st, &settings.Server{Root: userScope}).ServeHTTP(rec, req)
 
 		info, err := os.Stat(filepath.Join(userScope, "newdir"))
 		if err != nil {
@@ -129,7 +129,7 @@ func TestCanonicalizeRequestPathKeepsTrailingSlash(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodPut, "/newdir/", http.NoBody)
 		req.Header.Set("X-Auth", signed)
 		rec := httptest.NewRecorder()
-		handle(resourcePutHandler, "", st, &settings.Server{}).ServeHTTP(rec, req)
+		handle(resourcePutHandler, "", st, &settings.Server{Root: userScope}).ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusMethodNotAllowed {
 			t.Errorf("PUT /newdir/ = %d; want 405", rec.Code)

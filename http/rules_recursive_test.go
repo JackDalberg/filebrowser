@@ -43,12 +43,12 @@ func TestRecursiveOperationsEnforceDescendantRules(t *testing.T) {
 		return userScope, denyRuleStorage(t, userScope, "/src/secret", perm, key)
 	}
 
-	do := func(t *testing.T, st *storage.Storage, handler handleFunc, method, target string) *httptest.ResponseRecorder {
+	do := func(t *testing.T, st *storage.Storage, handler handleFunc, method, target, root string) *httptest.ResponseRecorder {
 		t.Helper()
 		req, _ := http.NewRequest(method, target, http.NoBody)
 		req.Header.Set("X-Auth", signToken(t, perm, key))
 		rec := httptest.NewRecorder()
-		handle(handler, "", st, &settings.Server{}).ServeHTTP(rec, req)
+		handle(handler, "", st, &settings.Server{Root: root}).ServeHTTP(rec, req)
 		return rec
 	}
 
@@ -59,15 +59,15 @@ func TestRecursiveOperationsEnforceDescendantRules(t *testing.T) {
 	}
 
 	t.Run("denied descendant is not directly readable", func(t *testing.T) {
-		_, st := scope(t)
-		if rec := do(t, st, rawHandler, http.MethodGet, "/src/secret/marker.txt"); rec.Code != http.StatusForbidden {
+		userScope, st := scope(t)
+		if rec := do(t, st, rawHandler, http.MethodGet, "/src/secret/marker.txt", userScope); rec.Code != http.StatusForbidden {
 			t.Fatalf("GET /src/secret/marker.txt = %d; want 403", rec.Code)
 		}
 	})
 
 	t.Run("copying the parent does not expose it", func(t *testing.T) {
 		userScope, st := scope(t)
-		rec := do(t, st, resourcePatchHandler(), http.MethodPatch, "/src?action=copy&destination=/dst")
+		rec := do(t, st, resourcePatchHandler(), http.MethodPatch, "/src?action=copy&destination=/dst", userScope)
 
 		if leaked := filepath.Join(userScope, "dst", "secret", "marker.txt"); exists(t, leaked) {
 			t.Fatalf("VULNERABLE: denied descendant copied to %s (status %d)", leaked, rec.Code)
@@ -79,7 +79,7 @@ func TestRecursiveOperationsEnforceDescendantRules(t *testing.T) {
 
 	t.Run("renaming the parent does not expose it", func(t *testing.T) {
 		userScope, st := scope(t)
-		rec := do(t, st, resourcePatchHandler(), http.MethodPatch, "/src?action=rename&destination=/moved")
+		rec := do(t, st, resourcePatchHandler(), http.MethodPatch, "/src?action=rename&destination=/moved", userScope)
 
 		if leaked := filepath.Join(userScope, "moved", "secret", "marker.txt"); exists(t, leaked) {
 			t.Fatalf("VULNERABLE: denied descendant moved to %s (status %d)", leaked, rec.Code)
@@ -94,7 +94,7 @@ func TestRecursiveOperationsEnforceDescendantRules(t *testing.T) {
 
 	t.Run("deleting the parent does not delete it", func(t *testing.T) {
 		userScope, st := scope(t)
-		rec := do(t, st, resourceDeleteHandler(), http.MethodDelete, "/src")
+		rec := do(t, st, resourceDeleteHandler(), http.MethodDelete, "/src", userScope)
 
 		if !exists(t, filepath.Join(userScope, "src", "secret", "marker.txt")) {
 			t.Fatalf("VULNERABLE: denied descendant deleted through its parent (status %d)", rec.Code)
@@ -106,7 +106,7 @@ func TestRecursiveOperationsEnforceDescendantRules(t *testing.T) {
 
 	t.Run("an entirely allowed tree still copies", func(t *testing.T) {
 		userScope, st := scope(t)
-		rec := do(t, st, resourcePatchHandler(), http.MethodPatch, "/clean?action=copy&destination=/clean-copy")
+		rec := do(t, st, resourcePatchHandler(), http.MethodPatch, "/clean?action=copy&destination=/clean-copy", userScope)
 
 		if rec.Code != http.StatusOK {
 			t.Fatalf("PATCH /clean?action=copy = %d, body=%q; want 200", rec.Code, rec.Body.String())

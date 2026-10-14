@@ -17,7 +17,7 @@ import (
 var withHashFile = func(fn handleFunc) handleFunc {
 	return func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
 		id, ifPath := ifPathWithName(r)
-		link, err := d.store.Share.GetByHash(id)
+		link, err := d.store.GetShareByHash(id)
 		if err != nil {
 			return errToStatus(err), err
 		}
@@ -27,7 +27,7 @@ var withHashFile = func(fn handleFunc) handleFunc {
 			return status, err
 		}
 
-		user, err := d.store.Users.Get(d.server.Root, d.server.FollowExternalSymlinks, link.UserID)
+		user, err := d.store.GetUser(d.server.Root, d.server.FollowExternalSymlinks, link.UserID)
 		if err != nil {
 			return errToStatus(err), err
 		}

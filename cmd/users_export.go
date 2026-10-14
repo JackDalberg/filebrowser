@@ -15,7 +15,7 @@ var usersExportCmd = &cobra.Command{
 path to the file where you want to write the users.`,
 	Args: jsonYamlArg,
 	RunE: withStore(func(_ *cobra.Command, args []string, st *store) error {
-		list, err := st.Users.Gets("", false)
+		list, err := st.ListUsers("", false)
 		if err != nil {
 			return err
 		}

@@ -2,6 +2,7 @@ package fbhttp
 
 import (
 	"encoding/json"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,12 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/asdine/storm/v3"
 	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/JackDalberg/filebrowser/settings"
 	"github.com/JackDalberg/filebrowser/share"
-	"github.com/JackDalberg/filebrowser/storage/bolt"
+	"github.com/JackDalberg/filebrowser/storage"
 	"github.com/JackDalberg/filebrowser/users"
 )
 
@@ -31,16 +31,11 @@ func TestAdminShareGetsHandlerMatchesOwnerScope(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	db, err := storm.Open(filepath.Join(t.TempDir(), "db"))
+	st, err := storage.Open(filepath.Join(t.TempDir(), "db"), fs.ModeTemporary)
 	if err != nil {
 		t.Fatalf("failed to open db: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	st, err := bolt.NewStorage(db)
-	if err != nil {
-		t.Fatalf("failed to get storage: %v", err)
-	}
+	t.Cleanup(func() { _ = st.Close() })
 
 	owner := &users.User{
 		Username: "owner",
@@ -48,7 +43,7 @@ func TestAdminShareGetsHandlerMatchesOwnerScope(t *testing.T) {
 		Scope:    "/owner",
 		Perm:     users.Permissions{Share: true, Download: true},
 	}
-	if err := st.Users.Save(owner); err != nil {
+	if err := st.SaveUser(owner); err != nil {
 		t.Fatalf("failed to save owner: %v", err)
 	}
 
@@ -59,15 +54,15 @@ func TestAdminShareGetsHandlerMatchesOwnerScope(t *testing.T) {
 		Scope:    "/",
 		Perm:     adminPerm,
 	}
-	if err := st.Users.Save(admin); err != nil {
+	if err := st.SaveUser(admin); err != nil {
 		t.Fatalf("failed to save admin: %v", err)
 	}
 
-	if err := st.Share.Save(&share.Link{Hash: "h", UserID: owner.ID, Path: "/file.txt"}); err != nil {
+	if err := st.SaveShare(&share.Link{Hash: "h", UserID: owner.ID, Path: "/file.txt"}); err != nil {
 		t.Fatalf("failed to save share: %v", err)
 	}
 	key := []byte("test-signing-key")
-	if err := st.Settings.Save(&settings.Settings{Key: key}); err != nil {
+	if err := st.SaveSettings(&settings.Settings{Key: key}); err != nil {
 		t.Fatalf("failed to save settings: %v", err)
 	}
 
@@ -115,7 +110,7 @@ func TestSharePostHandlerDoesNotLeakSecrets(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodPost, "/file.txt", strings.NewReader(body))
 	req.Header.Set("X-Auth", signed)
 	rec := httptest.NewRecorder()
-	handle(sharePostHandler, "", st, &settings.Server{Root: root}).ServeHTTP(rec, req)
+	handle(sharePostHandler, "", st, &settings.Server{Root: userScope}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%q", rec.Code, rec.Body.String())
@@ -137,7 +132,7 @@ func TestSharePostHandlerDoesNotLeakSecrets(t *testing.T) {
 
 	// The secrets must still be persisted server-side (storm uses the JSON codec,
 	// so the storage struct's tags must keep emitting them).
-	stored, err := st.Share.GetByHash(resp["hash"].(string))
+	stored, err := st.GetShareByHash(resp["hash"].(string))
 	if err != nil {
 		t.Fatalf("share not stored: %v", err)
 	}

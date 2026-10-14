@@ -89,7 +89,7 @@ func renewableErr(err error, r *http.Request, d *data, tk *authToken) bool {
 // the token was issued for. The username is resolved through the user store, so
 // that it is matched exactly as a regular proxy login would match it.
 func proxyAsserts(r *http.Request, d *data, id uint) bool {
-	auther, err := d.store.Auth.Get(fbAuth.MethodProxyAuth)
+	auther, err := d.store.GetAuther(fbAuth.MethodProxyAuth)
 	if err != nil {
 		return false
 	}
@@ -104,7 +104,7 @@ func proxyAsserts(r *http.Request, d *data, id uint) bool {
 		return false
 	}
 
-	user, err := d.store.Users.Get(d.server.Root, d.server.FollowExternalSymlinks, username)
+	user, err := d.store.GetUser(d.server.Root, d.server.FollowExternalSymlinks, username)
 	if err != nil {
 		return false
 	}
@@ -126,13 +126,13 @@ func withUser(fn handleFunc) handleFunc {
 		}
 
 		expiresSoon := tk.ExpiresAt != nil && time.Until(tk.ExpiresAt.Time) < time.Hour
-		updated := tk.IssuedAt != nil && tk.IssuedAt.Unix() < d.store.Users.LastUpdate(tk.User.ID)
+		updated := tk.IssuedAt != nil && tk.IssuedAt.Unix() < d.store.UserLastUpdate(tk.User.ID)
 
 		if expiresSoon || updated {
 			w.Header().Add("X-Renew-Token", "true")
 		}
 
-		d.user, err = d.store.Users.Get(d.server.Root, d.server.FollowExternalSymlinks, tk.User.ID)
+		d.user, err = d.store.GetUser(d.server.Root, d.server.FollowExternalSymlinks, tk.User.ID)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
@@ -158,12 +158,12 @@ func loginHandler(tokenExpireTime time.Duration) handleFunc {
 			r.Body = http.MaxBytesReader(w, r.Body, maxAuthBodySize)
 		}
 
-		auther, err := d.store.Auth.Get(d.settings.AuthMethod)
+		auther, err := d.store.GetAuther(d.settings.AuthMethod)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
 
-		user, err := auther.Auth(r, d.store.Users, d.settings, d.server)
+		user, err := auther.Auth(r, d.store, d.settings, d.server)
 		switch {
 		case errors.Is(err, os.ErrPermission):
 			return http.StatusForbidden, nil
@@ -225,7 +225,7 @@ var signupHandler = func(w http.ResponseWriter, r *http.Request, d *data) (int, 
 
 	log.Printf("new user: %s, home dir: [%s].", user.Username, user.Scope)
 
-	err = d.store.Users.SaveProvisioned(user, derivedScope)
+	err = d.store.SaveProvisionedUser(user, derivedScope)
 	if errors.Is(err, fberrors.ErrExist) {
 		return http.StatusConflict, err
 	} else if err != nil {

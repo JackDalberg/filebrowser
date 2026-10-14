@@ -36,17 +36,17 @@ override the options.`,
 		}
 
 		// Save updated config
-		err = st.Settings.Save(s)
+		err = st.SaveSettings(s)
 		if err != nil {
 			return err
 		}
 
-		err = st.Settings.SaveServer(ser)
+		err = st.SaveServerConfig(ser)
 		if err != nil {
 			return err
 		}
 
-		err = st.Auth.Save(auther)
+		err = st.SaveAuther(auther)
 		if err != nil {
 			return err
 		}

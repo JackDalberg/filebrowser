@@ -45,7 +45,7 @@ func TestRawArchiveDoesNotManufactureTraversal(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "/ziptest?algo=zip", http.NoBody)
 	req.Header.Set("X-Auth", signed)
 	rec := httptest.NewRecorder()
-	handle(rawHandler, "", st, &settings.Server{}).ServeHTTP(rec, req)
+	handle(rawHandler, "", st, &settings.Server{Root: userScope}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d body=%q", rec.Code, rec.Body.String())
