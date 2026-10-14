@@ -60,14 +60,14 @@ func addConfigFlags(flags *pflag.FlagSet) {
 	flags.Uint16("tus.retryCount", settings.DefaultTusRetryCount, "the tus retry count")
 }
 
-func getAuthMethod(flags *pflag.FlagSet, defaults ...interface{}) (settings.AuthMethod, map[string]interface{}, error) {
+func getAuthMethod(flags *pflag.FlagSet, defaults ...any) (settings.AuthMethod, map[string]any, error) {
 	methodStr, err := flags.GetString("auth.method")
 	if err != nil {
 		return "", nil, err
 	}
 	method := settings.AuthMethod(methodStr)
 
-	var defaultAuther map[string]interface{}
+	var defaultAuther map[string]any
 	if len(defaults) > 0 {
 		if hasAuth := defaults[0]; hasAuth != true {
 			for _, arg := range defaults {
@@ -91,7 +91,7 @@ func getAuthMethod(flags *pflag.FlagSet, defaults ...interface{}) (settings.Auth
 	return method, defaultAuther, nil
 }
 
-func getProxyAuth(flags *pflag.FlagSet, defaultAuther map[string]interface{}) (auth.Auther, error) {
+func getProxyAuth(flags *pflag.FlagSet, defaultAuther map[string]any) (auth.Auther, error) {
 	header, err := flags.GetString("auth.header")
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func getNoAuth() auth.Auther {
 	return &auth.NoAuth{}
 }
 
-func getJSONAuth(flags *pflag.FlagSet, defaultAuther map[string]interface{}) (auth.Auther, error) {
+func getJSONAuth(flags *pflag.FlagSet, defaultAuther map[string]any) (auth.Auther, error) {
 	jsonAuth := &auth.JSONAuth{}
 	host, err := flags.GetString("recaptcha.host")
 	if err != nil {
@@ -130,13 +130,13 @@ func getJSONAuth(flags *pflag.FlagSet, defaultAuther map[string]interface{}) (au
 	}
 
 	if key == "" {
-		if kmap, ok := defaultAuther["recaptcha"].(map[string]interface{}); ok {
+		if kmap, ok := defaultAuther["recaptcha"].(map[string]any); ok {
 			key = kmap["key"].(string)
 		}
 	}
 
 	if secret == "" {
-		if smap, ok := defaultAuther["recaptcha"].(map[string]interface{}); ok {
+		if smap, ok := defaultAuther["recaptcha"].(map[string]any); ok {
 			secret = smap["secret"].(string)
 		}
 	}
@@ -151,7 +151,7 @@ func getJSONAuth(flags *pflag.FlagSet, defaultAuther map[string]interface{}) (au
 	return jsonAuth, nil
 }
 
-func getHookAuth(flags *pflag.FlagSet, defaultAuther map[string]interface{}) (auth.Auther, error) {
+func getHookAuth(flags *pflag.FlagSet, defaultAuther map[string]any) (auth.Auther, error) {
 	command, err := flags.GetString("auth.command")
 	if err != nil {
 		return nil, err
@@ -167,7 +167,7 @@ func getHookAuth(flags *pflag.FlagSet, defaultAuther map[string]interface{}) (au
 	return &auth.HookAuth{Command: command}, nil
 }
 
-func getAuthentication(flags *pflag.FlagSet, defaults ...interface{}) (settings.AuthMethod, auth.Auther, error) {
+func getAuthentication(flags *pflag.FlagSet, defaults ...any) (settings.AuthMethod, auth.Auther, error) {
 	method, defaultAuther, err := getAuthMethod(flags, defaults...)
 	if err != nil {
 		return "", nil, err

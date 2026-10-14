@@ -54,11 +54,9 @@ func TestTusHandlersRejectSymlinkScopeEscape(t *testing.T) {
 
 	// Forge a valid auth token for user ID 1.
 	claims := &authToken{
-		User: userInfo{ID: 1, Username: "u", Perm: users.Permissions{Create: true, Modify: true}},
-		RegisteredClaims: jwt.RegisteredClaims{
-			IssuedAt:  jwt.NewNumericDate(time.Now().Add(-time.Minute)),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-		},
+		User:      userInfo{ID: 1, Username: "u", Perm: users.Permissions{Create: true, Modify: true}},
+		IssuedAt:  jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	}
 	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(key)
 	if err != nil {
@@ -83,7 +81,6 @@ func TestTusHandlersRejectSymlinkScopeEscape(t *testing.T) {
 	}
 
 	for name, tc := range cases {
-		tc := tc
 		t.Run(name, func(t *testing.T) {
 			req, err := http.NewRequest(tc.method, "escape_link/injected.txt", http.NoBody)
 			if err != nil {

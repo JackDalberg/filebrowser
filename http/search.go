@@ -15,12 +15,10 @@ import (
 const searchPingInterval = 5
 
 var searchHandler = withUser(func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
-	response := make(chan map[string]interface{})
+	response := make(chan map[string]any)
 	ctx, cancel := context.WithCancelCause(r.Context())
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		// Avoid connection timeout
 		timeout := time.NewTimer(searchPingInterval * time.Second)
 		defer timeout.Stop()
@@ -55,13 +53,13 @@ var searchHandler = withUser(func(w http.ResponseWriter, r *http.Request, d *dat
 				flusher.Flush()
 			}
 		}
-	}()
+	})
 	query := r.URL.Query().Get("query")
 
 	err := search.Search(ctx, d.user.Fs, r.URL.Path, query, d, func(path string, f os.FileInfo) error {
 		select {
 		case <-ctx.Done():
-		case response <- map[string]interface{}{
+		case response <- map[string]any{
 			"dir":  f.IsDir(),
 			"path": path,
 		}:

@@ -145,11 +145,9 @@ func signShareTestToken(t *testing.T, id uint, username string, perm users.Permi
 	t.Helper()
 
 	claims := &authToken{
-		User: userInfo{ID: id, Username: username, Perm: perm},
-		RegisteredClaims: jwt.RegisteredClaims{
-			IssuedAt:  jwt.NewNumericDate(time.Now().Add(-time.Minute)),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
-		},
+		User:      userInfo{ID: id, Username: username, Perm: perm},
+		IssuedAt:  jwt.NewNumericDate(time.Now().Add(-time.Minute)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 	}
 	signed, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(key)
 	if err != nil {

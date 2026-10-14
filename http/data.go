@@ -21,7 +21,7 @@ type data struct {
 	server   *settings.Server
 	store    *storage.Storage
 	user     *users.User
-	raw      interface{}
+	raw      any
 
 	// checkerPrefix is prepended to every path before evaluating rules. It is
 	// set when the user's filesystem has been rebased onto a subdirectory (as

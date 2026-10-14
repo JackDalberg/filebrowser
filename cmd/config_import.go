@@ -18,7 +18,7 @@ func init() {
 type settingsFile struct {
 	Settings *settings.Settings `json:"settings"`
 	Server   *settings.Server   `json:"server"`
-	Auther   interface{}        `json:"auther"`
+	Auther   any                `json:"auther"`
 }
 
 var configImportCmd = &cobra.Command{
@@ -73,19 +73,19 @@ The path must be for a json or yaml file.`,
 		var autherErr error
 		switch file.Settings.AuthMethod {
 		case auth.MethodJSONAuth:
-			var a interface{}
+			var a any
 			a, autherErr = getAuther(auth.JSONAuth{}, rawAuther)
 			auther = a.(*auth.JSONAuth)
 		case auth.MethodNoAuth:
-			var a interface{}
+			var a any
 			a, autherErr = getAuther(auth.NoAuth{}, rawAuther)
 			auther = a.(*auth.NoAuth)
 		case auth.MethodProxyAuth:
-			var a interface{}
+			var a any
 			a, autherErr = getAuther(auth.ProxyAuth{}, rawAuther)
 			auther = a.(*auth.ProxyAuth)
 		case auth.MethodHookAuth:
-			var a interface{}
+			var a any
 			a, autherErr = getAuther(&auth.HookAuth{}, rawAuther)
 			auther = a.(*auth.HookAuth)
 		default:
@@ -105,7 +105,7 @@ The path must be for a json or yaml file.`,
 	}, storeOptions{allowsNoDatabase: true}),
 }
 
-func getAuther(sample auth.Auther, data interface{}) (interface{}, error) {
+func getAuther(sample auth.Auther, data any) (any, error) {
 	authType := reflect.TypeOf(sample)
 	auther := reflect.New(authType).Interface()
 	bytes, err := json.Marshal(data)

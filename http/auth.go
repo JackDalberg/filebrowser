@@ -114,7 +114,7 @@ func proxyAsserts(r *http.Request, d *data, id uint) bool {
 
 func withUser(fn handleFunc) handleFunc {
 	return func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
-		keyFunc := func(_ *jwt.Token) (interface{}, error) {
+		keyFunc := func(_ *jwt.Token) (any, error) {
 			return d.settings.Key, nil
 		}
 
@@ -257,11 +257,9 @@ func printToken(w http.ResponseWriter, _ *http.Request, d *data, user *users.Use
 			Username:              user.Username,
 			AceEditorTheme:        user.AceEditorTheme,
 		},
-		RegisteredClaims: jwt.RegisteredClaims{
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenExpirationTime)),
-			Issuer:    "File Browser",
-		},
+		IssuedAt:  jwt.NewNumericDate(time.Now()),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenExpirationTime)),
+		Issuer:    "File Browser",
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

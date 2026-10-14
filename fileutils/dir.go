@@ -3,6 +3,7 @@ package fileutils
 import (
 	"errors"
 	"io/fs"
+	"strings"
 
 	"github.com/spf13/afero"
 )
@@ -55,13 +56,13 @@ func CopyDir(afs afero.Fs, source, dest string, fileMode, dirMode fs.FileMode) e
 		}
 	}
 
-	var errString string
+	var errString strings.Builder
 	for _, err := range errs {
-		errString += err.Error() + "\n"
+		errString.WriteString(err.Error() + "\n")
 	}
 
-	if errString != "" {
-		return errors.New(errString)
+	if errString.String() != "" {
+		return errors.New(errString.String())
 	}
 
 	return nil
