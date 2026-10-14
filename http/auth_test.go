@@ -11,10 +11,10 @@ import (
 	"github.com/asdine/storm/v3"
 	"github.com/golang-jwt/jwt/v5"
 
-	fbAuth "github.com/filebrowser/filebrowser/v2/auth"
-	"github.com/filebrowser/filebrowser/v2/settings"
-	"github.com/filebrowser/filebrowser/v2/storage/bolt"
-	"github.com/filebrowser/filebrowser/v2/users"
+	fbAuth "github.com/JackDalberg/filebrowser/auth"
+	"github.com/JackDalberg/filebrowser/settings"
+	"github.com/JackDalberg/filebrowser/storage/bolt"
+	"github.com/JackDalberg/filebrowser/users"
 )
 
 // Regression for the username-normalization home-directory collision

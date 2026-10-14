@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/afero"
 
-	"github.com/filebrowser/filebrowser/v2/rules"
+	"github.com/JackDalberg/filebrowser/rules"
 )
 
 type searchOptions struct {
@@ -20,7 +20,8 @@ type searchOptions struct {
 
 // Search searches for a query in a fs.
 func Search(ctx context.Context,
-	fs afero.Fs, scope, query string, checker rules.Checker, found func(path string, f os.FileInfo) error) error {
+	fs afero.Fs, scope, query string, checker rules.Checker, found func(path string, f os.FileInfo) error,
+) error {
 	search := parseSearch(query)
 
 	scope = filepath.ToSlash(filepath.Clean(scope))

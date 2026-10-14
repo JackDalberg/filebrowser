@@ -22,10 +22,10 @@ import (
 	"github.com/spf13/viper"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/filebrowser/filebrowser/v2/frontend"
-	fbhttp "github.com/filebrowser/filebrowser/v2/http"
-	"github.com/filebrowser/filebrowser/v2/settings"
-	"github.com/filebrowser/filebrowser/v2/storage"
+	"github.com/JackDalberg/filebrowser/frontend"
+	fbhttp "github.com/JackDalberg/filebrowser/http"
+	"github.com/JackDalberg/filebrowser/settings"
+	"github.com/JackDalberg/filebrowser/storage"
 )
 
 var (

@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filebrowser/filebrowser/v2/rules"
-	"github.com/filebrowser/filebrowser/v2/settings"
-	"github.com/filebrowser/filebrowser/v2/storage"
-	"github.com/filebrowser/filebrowser/v2/users"
+	"github.com/JackDalberg/filebrowser/rules"
+	"github.com/JackDalberg/filebrowser/settings"
+	"github.com/JackDalberg/filebrowser/storage"
+	"github.com/JackDalberg/filebrowser/users"
 )
 
 // denyRuleStorage builds a scoped storage whose global settings deny denyPath.

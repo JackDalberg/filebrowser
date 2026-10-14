@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	fberrors "github.com/filebrowser/filebrowser/v2/errors"
+	fberrors "github.com/JackDalberg/filebrowser/errors"
 )
 
 // Interface is implemented by storage

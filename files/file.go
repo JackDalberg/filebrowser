@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	fberrors "github.com/filebrowser/filebrowser/v2/errors"
-	"github.com/filebrowser/filebrowser/v2/rules"
+	fberrors "github.com/JackDalberg/filebrowser/errors"
+	"github.com/JackDalberg/filebrowser/rules"
 	"github.com/spf13/afero"
 )
 

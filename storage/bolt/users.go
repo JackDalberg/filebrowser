@@ -10,8 +10,8 @@ import (
 	"github.com/asdine/storm/v3/q"
 	bolt "go.etcd.io/bbolt"
 
-	fberrors "github.com/filebrowser/filebrowser/v2/errors"
-	"github.com/filebrowser/filebrowser/v2/users"
+	fberrors "github.com/JackDalberg/filebrowser/errors"
+	"github.com/JackDalberg/filebrowser/users"
 )
 
 type usersBackend struct {
@@ -32,7 +32,6 @@ func (st usersBackend) GetBy(i interface{}) (user *users.User, err error) {
 	}
 
 	err = st.db.One(arg, i, user)
-
 	if err != nil {
 		if errors.Is(err, storm.ErrNotFound) {
 			return nil, fberrors.ErrNotExist

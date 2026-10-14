@@ -3,7 +3,7 @@ package share
 import (
 	"time"
 
-	fberrors "github.com/filebrowser/filebrowser/v2/errors"
+	fberrors "github.com/JackDalberg/filebrowser/errors"
 )
 
 // StorageBackend is the interface to implement for a share storage.
@@ -31,7 +31,6 @@ func NewStorage(back StorageBackend) *Storage {
 // All wraps a StorageBackend.All.
 func (s *Storage) All() ([]*Link, error) {
 	links, err := s.back.All()
-
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +50,6 @@ func (s *Storage) All() ([]*Link, error) {
 // FindByUserID wraps a StorageBackend.FindByUserID.
 func (s *Storage) FindByUserID(id uint) ([]*Link, error) {
 	links, err := s.back.FindByUserID(id)
-
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +91,6 @@ func (s *Storage) GetPermanent(path string, id uint) (*Link, error) {
 // Gets wraps a StorageBackend.Gets
 func (s *Storage) Gets(path string, id uint) ([]*Link, error) {
 	links, err := s.back.Gets(path, id)
-
 	if err != nil {
 		return nil, err
 	}

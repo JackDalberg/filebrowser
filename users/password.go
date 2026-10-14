@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	fberrors "github.com/filebrowser/filebrowser/v2/errors"
+	fberrors "github.com/JackDalberg/filebrowser/errors"
 )
 
 // ValidateAndHashPwd validates and hashes a password.
@@ -36,12 +36,12 @@ func CheckPwd(password, hash string) bool {
 
 func RandomPwd(passwordLength uint) (string, error) {
 	randomPasswordBytes := make([]byte, passwordLength)
-	var _, err = rand.Read(randomPasswordBytes)
+	_, err := rand.Read(randomPasswordBytes)
 	if err != nil {
 		return "", err
 	}
 
 	// This is done purely to make the password human-readable
-	var randomPasswordString = base64.URLEncoding.EncodeToString(randomPasswordBytes)
+	randomPasswordString := base64.URLEncoding.EncodeToString(randomPasswordBytes)
 	return randomPasswordString, nil
 }

@@ -11,9 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/filebrowser/filebrowser/v2/files"
-	"github.com/filebrowser/filebrowser/v2/fileutils"
-	"github.com/filebrowser/filebrowser/v2/users"
+	"github.com/JackDalberg/filebrowser/files"
+	"github.com/JackDalberg/filebrowser/fileutils"
+	"github.com/JackDalberg/filebrowser/users"
 	"github.com/mholt/archives"
 )
 

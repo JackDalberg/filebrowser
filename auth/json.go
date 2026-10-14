@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filebrowser/filebrowser/v2/settings"
-	"github.com/filebrowser/filebrowser/v2/users"
+	"github.com/JackDalberg/filebrowser/settings"
+	"github.com/JackDalberg/filebrowser/users"
 )
 
 // MethodJSONAuth is used to identify json auth.
@@ -45,7 +45,6 @@ func (a JSONAuth) Auth(r *http.Request, usr users.Store, _ *settings.Settings, s
 	// If ReCaptcha is enabled, check the code.
 	if a.ReCaptcha != nil && a.ReCaptcha.Secret != "" {
 		ok, err := a.ReCaptcha.Ok(cred.ReCaptcha)
-
 		if err != nil {
 			return nil, err
 		}
