@@ -1,6 +1,7 @@
 package files
 
 import (
+	"context"
 	"errors"
 	"io"
 	"io/fs"
@@ -13,7 +14,7 @@ import (
 )
 
 // Copy copies a file or folder from one place to another.
-func Copy(afs afero.Fs, src, dst string, fileMode, dirMode fs.FileMode) error {
+func Copy(ctx context.Context, afs afero.Fs, src, dst string, fileMode, dirMode fs.FileMode) error {
 	if src = path.Clean("/" + src); src == "" {
 		return os.ErrNotExist
 	}
@@ -37,16 +38,16 @@ func Copy(afs afero.Fs, src, dst string, fileMode, dirMode fs.FileMode) error {
 	}
 
 	if info.IsDir() {
-		return CopyDir(afs, src, dst, fileMode, dirMode)
+		return CopyDir(ctx, afs, src, dst, fileMode, dirMode)
 	}
 
-	return CopyFile(afs, src, dst, fileMode, dirMode)
+	return CopyFile(ctx, afs, src, dst, fileMode, dirMode)
 }
 
 // CopyDir copies a directory from source to dest and all
 // of its sub-directories. It doesn't stop if it finds an error
 // during the copy. Returns an error if any.
-func CopyDir(afs afero.Fs, source, dest string, fileMode, dirMode fs.FileMode) error {
+func CopyDir(ctx context.Context, afs afero.Fs, source, dest string, fileMode, dirMode fs.FileMode) error {
 	// Get properties of source.
 	srcinfo, err := afs.Stat(source)
 	if err != nil {
@@ -73,18 +74,22 @@ func CopyDir(afs afero.Fs, source, dest string, fileMode, dirMode fs.FileMode) e
 	var errs []error
 
 	for _, obj := range obs {
+		// Check context to early cancel copying.
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		fsource := source + "/" + obj.Name()
 		fdest := dest + "/" + obj.Name()
 
 		if obj.IsDir() {
 			// Create sub-directories, recursively.
-			err = CopyDir(afs, fsource, fdest, fileMode, dirMode)
+			err = CopyDir(ctx, afs, fsource, fdest, fileMode, dirMode)
 			if err != nil {
 				errs = append(errs, err)
 			}
 		} else {
 			// Perform the file copy.
-			err = CopyFile(afs, fsource, fdest, fileMode, dirMode)
+			err = CopyFile(ctx, afs, fsource, fdest, fileMode, dirMode)
 			if err != nil {
 				errs = append(errs, err)
 			}
@@ -106,12 +111,12 @@ func CopyDir(afs afero.Fs, source, dest string, fileMode, dirMode fs.FileMode) e
 // MoveFile moves file from src to dst.
 // By default the rename filesystem system call is used. If src and dst point to different volumes
 // the file copy is used as a fallback
-func MoveFile(afs afero.Fs, src, dst string, fileMode, dirMode fs.FileMode) error {
+func MoveFile(ctx context.Context, afs afero.Fs, src, dst string, fileMode, dirMode fs.FileMode) error {
 	if afs.Rename(src, dst) == nil {
 		return nil
 	}
 	// fallback
-	err := Copy(afs, src, dst, fileMode, dirMode)
+	err := Copy(ctx, afs, src, dst, fileMode, dirMode)
 	if err != nil {
 		_ = afs.Remove(dst)
 		return err
@@ -124,7 +129,7 @@ func MoveFile(afs afero.Fs, src, dst string, fileMode, dirMode fs.FileMode) erro
 
 // CopyFile copies a file from source to dest and returns
 // an error if any.
-func CopyFile(afs afero.Fs, source, dest string, fileMode, dirMode fs.FileMode) error {
+func CopyFile(ctx context.Context, afs afero.Fs, source, dest string, fileMode, dirMode fs.FileMode) error {
 	// Open the source file.
 	src, err := afs.Open(source)
 	if err != nil {
@@ -147,7 +152,7 @@ func CopyFile(afs afero.Fs, source, dest string, fileMode, dirMode fs.FileMode) 
 	defer dst.Close()
 
 	// Copy the contents of the file.
-	_, err = io.Copy(dst, src)
+	_, err = io.Copy(dst, ctxReader{ctx: ctx, r: src})
 	if err != nil {
 		return err
 	}
@@ -163,4 +168,17 @@ func CopyFile(afs afero.Fs, source, dest string, fileMode, dirMode fs.FileMode) 
 	}
 
 	return nil
+}
+
+// ctxReader is a helper to early cancel reading large files
+type ctxReader struct {
+	ctx context.Context
+	r   io.Reader
+}
+
+func (c ctxReader) Read(p []byte) (int, error) {
+	if err := c.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return c.r.Read(p)
 }

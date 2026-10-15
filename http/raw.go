@@ -168,6 +168,7 @@ func getFiles(d *data, path, commonPath string) ([]archives.FileInfo, error) {
 }
 
 func rawDirHandler(w http.ResponseWriter, r *http.Request, d *data, file *files.FileInfo) (int, error) {
+	ctx := r.Context()
 	filenames, err := parseQueryFiles(r, file, d.user)
 	if err != nil {
 		return http.StatusInternalServerError, err
@@ -182,6 +183,9 @@ func rawDirHandler(w http.ResponseWriter, r *http.Request, d *data, file *files.
 
 	var allFiles []archives.FileInfo
 	for _, fname := range filenames {
+		if err := ctx.Err(); err != nil {
+			return http.StatusInternalServerError, err
+		}
 		archiveFiles, err := getFiles(d, fname, commonDir)
 		if err != nil {
 			log.Printf("Failed to get files from %s: %v", fname, err)
@@ -208,7 +212,7 @@ func rawDirHandler(w http.ResponseWriter, r *http.Request, d *data, file *files.
 	name += extension
 	w.Header().Set("Content-Disposition", "attachment; filename*=utf-8''"+url.PathEscape(name))
 
-	if err := archiver.Archive(r.Context(), w, allFiles); err != nil {
+	if err := archiver.Archive(ctx, w, allFiles); err != nil {
 		return http.StatusInternalServerError, err
 	}
 

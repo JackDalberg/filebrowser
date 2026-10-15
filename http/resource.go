@@ -352,7 +352,7 @@ func patchAction(ctx context.Context, action, src, dst string, d *data) error {
 			return fberrors.ErrPermissionDenied
 		}
 
-		return files.Copy(d.user.Fs, src, dst, d.settings.FileMode, d.settings.DirMode)
+		return files.Copy(ctx, d.user.Fs, src, dst, d.settings.FileMode, d.settings.DirMode)
 	case "rename":
 		if !d.user.Perm.Rename {
 			return fberrors.ErrPermissionDenied
@@ -372,7 +372,7 @@ func patchAction(ctx context.Context, action, src, dst string, d *data) error {
 			return err
 		}
 
-		return files.MoveFile(d.user.Fs, src, dst, d.settings.FileMode, d.settings.DirMode)
+		return files.MoveFile(ctx, d.user.Fs, src, dst, d.settings.FileMode, d.settings.DirMode)
 	default:
 		return fmt.Errorf("unsupported action %s: %w", action, fberrors.ErrInvalidRequestParams)
 	}

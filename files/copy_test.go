@@ -42,7 +42,7 @@ func TestCopyDirUnreadableSubdirReturnsError(t *testing.T) {
 
 	afs := &failingOpenFs{Fs: mem, failOpen: "/srcdir/sub"}
 
-	err := Copy(afs, "/srcdir", "/dstdir", 0o644, 0o755)
+	err := Copy(t.Context(), afs, "/srcdir", "/dstdir", 0o644, 0o755)
 	if err == nil {
 		t.Fatal("expected an error when a sub-directory cannot be opened")
 	}
@@ -82,7 +82,7 @@ func TestCopyDoesNotDereferenceEscapingSymlink(t *testing.T) {
 
 	afs := NewScopedFs(afero.NewOsFs(), scope)
 
-	err := Copy(afs, "/srcdir", "/dstdir", 0o644, 0o755)
+	err := Copy(t.Context(), afs, "/srcdir", "/dstdir", 0o644, 0o755)
 	if err == nil {
 		t.Fatal("expected copy of a directory containing an escaping symlink to fail")
 	}
@@ -109,7 +109,7 @@ func TestCopyAllowsInScopeSymlink(t *testing.T) {
 
 	afs := NewScopedFs(afero.NewOsFs(), scope)
 
-	if err := Copy(afs, "/srcdir", "/dstdir", 0o644, 0o755); err != nil {
+	if err := Copy(t.Context(), afs, "/srcdir", "/dstdir", 0o644, 0o755); err != nil {
 		t.Fatalf("expected copy of an in-scope symlink to succeed, got: %v", err)
 	}
 
