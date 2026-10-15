@@ -32,8 +32,8 @@ func Open(path string, perms fs.FileMode) (*Storage, error) {
 		return nil, err
 	}
 	s := New(db)
-	s.configSet("version", 2)
-	return s, nil
+	err = s.configSet("version", 2)
+	return s, err
 }
 
 func (s *Storage) Close() error {
@@ -44,9 +44,9 @@ func (s *Storage) getBy[T any](field string, value any) (*T, error) {
 	v := new(T)
 	err := s.db.One(field, value, v)
 	if errors.Is(err, storm.ErrNotFound) {
-		return v, fberrors.ErrNotExist
+		return nil, fberrors.ErrNotExist
 	}
-	return v, nil
+	return v, err
 }
 
 func (s *Storage) all[T any]() ([]*T, error) {

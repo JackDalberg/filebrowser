@@ -1,5 +1,3 @@
-//go:build !dev
-
 package fbhttp
 
 // global headers to append to every response

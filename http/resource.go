@@ -133,7 +133,6 @@ func resourcePostHandler() handleFunc {
 			return errToStatus(err), err
 		}
 
-		// TODO(jack): Is this even used or just legacy?
 		_, err := files.NewFileInfo(&files.FileOptions{
 			Fs:         d.user.Fs,
 			Path:       r.URL.Path,
@@ -362,7 +361,6 @@ func patchAction(ctx context.Context, action, src, dst string, d *data) error {
 		src = path.Clean("/" + src)
 		dst = path.Clean("/" + dst)
 
-		// TODO(jack): Is this even used or just legacy?
 		_, err := files.NewFileInfo(&files.FileOptions{
 			Fs:         d.user.Fs,
 			Path:       src,

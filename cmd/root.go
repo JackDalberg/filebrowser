@@ -28,40 +28,8 @@ import (
 	"github.com/JackDalberg/filebrowser/storage"
 )
 
-var (
-	flagNamesMigrations = map[string]string{
-		"file-mode":                        "fileMode",
-		"dir-mode":                         "dirMode",
-		"hide-login-button":                "hideLoginButton",
-		"create-user-dir":                  "createUserDir",
-		"minimum-password-length":          "minimumPasswordLength",
-		"socket-perm":                      "socketPerm",
-		"disable-type-detection-by-header": "disableTypeDetectionByHeader",
-		"token-expiration-time":            "tokenExpirationTime",
-		"baseurl":                          "baseURL",
-	}
-
-	warnedFlags = map[string]bool{}
-)
-
-// TODO(remove): remove after July 2026.
-func migrateFlagNames(_ *pflag.FlagSet, name string) pflag.NormalizedName {
-	if newName, ok := flagNamesMigrations[name]; ok {
-
-		if !warnedFlags[name] {
-			warnedFlags[name] = true
-			log.Printf("DEPRECATION NOTICE: Flag --%s has been deprecated, use --%s instead\n", name, newName)
-		}
-
-		name = newName
-	}
-
-	return pflag.NormalizedName(name)
-}
-
 func init() {
 	rootCmd.SilenceUsage = true
-	rootCmd.SetGlobalNormalizationFunc(migrateFlagNames)
 
 	cobra.MousetrapHelpText = ""
 
@@ -285,10 +253,6 @@ func getServerSettings(v *viper.Viper, st *storage.Storage) (*settings.Server, e
 
 	if v.IsSet("baseURL") {
 		server.BaseURL = v.GetString("baseURL")
-		// TODO(remove): remove after July 2026.
-	} else if v := os.Getenv("FB_BASEURL"); v != "" {
-		log.Println("DEPRECATION NOTICE: Environment variable FB_BASEURL has been deprecated, use FB_BASE_URL instead")
-		server.BaseURL = v
 	}
 
 	if v.IsSet("tokenExpirationTime") {

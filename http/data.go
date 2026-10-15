@@ -90,7 +90,7 @@ func handle(fn handleFunc, prefix string, store *storage.Storage, server *settin
 
 		settings, err := store.GetSettings()
 		if err != nil {
-			log.Fatalf("ERROR: couldn't get settings: %v\n", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
