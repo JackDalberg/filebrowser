@@ -1,13 +1,14 @@
 package fbhttp
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	gopath "path"
 	"strconv"
 
 	"github.com/tomasen/realip"
 
+	"github.com/JackDalberg/filebrowser/files"
 	"github.com/JackDalberg/filebrowser/rules"
 	"github.com/JackDalberg/filebrowser/settings"
 	"github.com/JackDalberg/filebrowser/storage"
@@ -21,7 +22,9 @@ type data struct {
 	server   *settings.Server
 	store    *storage.Storage
 	user     *users.User
-	raw      any
+
+	fileInfo *files.FileInfo
+	id       uint
 
 	// checkerPrefix is prepended to every path before evaluating rules. It is
 	// set when the user's filesystem has been rebased onto a subdirectory (as
@@ -84,25 +87,16 @@ func (d *data) rulePath(path string) string {
 
 func handle(fn handleFunc, prefix string, store *storage.Storage, server *settings.Server) http.Handler {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for k, v := range globalHeaders {
-			w.Header().Set(k, v)
-		}
-
-		settings, err := store.GetSettings()
+		d, err := newData(store, server)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		status, err := fn(w, r, &data{
-			store:    store,
-			settings: settings,
-			server:   server,
-		})
-
+		status, err := fn(w, r, d)
 		if status >= 400 || err != nil {
 			clientIP := realip.FromRequest(r)
-			log.Printf("%s: %v %s %v", r.URL.Path, status, clientIP, err)
+			slog.ErrorContext(r.Context(), "request", "path", r.URL.Path, "status", status, "client_ip", clientIP, "err", err)
 		}
 
 		if status != 0 {
@@ -116,4 +110,17 @@ func handle(fn handleFunc, prefix string, store *storage.Storage, server *settin
 	})
 
 	return stripPrefix(prefix, handler)
+}
+
+func newData(store *storage.Storage, server *settings.Server) (*data, error) {
+	settings, err := store.GetSettings()
+	if err != nil {
+		return nil, err
+	}
+	d := &data{
+		store:    store,
+		settings: settings,
+		server:   server,
+	}
+	return d, nil
 }

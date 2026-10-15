@@ -28,12 +28,7 @@ func NewHandler(
 	server.CaseInsensitiveFs = files.CaseInsensitive(afero.NewOsFs(), server.Root)
 
 	r := mux.NewRouter()
-	r.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Security-Policy", `default-src 'self'; style-src 'unsafe-inline';`)
-			next.ServeHTTP(w, r)
-		})
-	})
+	r.Use(withDefaultHeaders)
 	index, static := getStaticHandlers(store, server, assetsFs)
 
 	monkey := func(fn handleFunc, prefix string) http.Handler {
@@ -42,7 +37,7 @@ func NewHandler(
 
 	r.HandleFunc("/health", healthHandler)
 	r.PathPrefix("/static").Handler(static)
-	r.NotFoundHandler = index
+	r.NotFoundHandler = withDefaultHeaders(index)
 
 	api := r.PathPrefix("/api").Subrouter()
 

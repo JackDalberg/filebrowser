@@ -21,7 +21,7 @@ func (s *Storage) GetSettings() (*settings.Settings, error) {
 	if set.MinimumPasswordLength == 0 {
 		set.MinimumPasswordLength = settings.DefaultMinimumPasswordLength
 	}
-	if set.Tus == (settings.Tus{}) {
+	if set.Tus.IsZero() {
 		set.Tus = settings.Tus{
 			ChunkSize:  settings.DefaultTusChunkSize,
 			RetryCount: settings.DefaultTusRetryCount,

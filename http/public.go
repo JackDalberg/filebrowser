@@ -93,7 +93,7 @@ var withHashFile = func(fn handleFunc) handleFunc {
 			file.Name = name
 		}
 
-		d.raw = file
+		d.fileInfo = file
 		return fn(w, r, d)
 	}
 }
@@ -116,7 +116,7 @@ func ifPathWithName(r *http.Request) (id, filePath string) {
 }
 
 var publicShareHandler = withHashFile(func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
-	file := d.raw.(*files.FileInfo)
+	file := d.fileInfo
 
 	if file.IsDir {
 		file.Sorting = files.Sorting{By: "name", Asc: false}
@@ -128,7 +128,7 @@ var publicShareHandler = withHashFile(func(w http.ResponseWriter, r *http.Reques
 })
 
 var publicDlHandler = withHashFile(func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
-	file := d.raw.(*files.FileInfo)
+	file := d.fileInfo
 	if !file.IsDir {
 		return rawFileHandler(w, r, file)
 	}

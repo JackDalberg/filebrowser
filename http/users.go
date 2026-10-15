@@ -63,7 +63,7 @@ func withSelfOrAdmin(fn handleFunc) handleFunc {
 			return http.StatusForbidden, nil
 		}
 
-		d.raw = id
+		d.id = id
 		return fn(w, r, d)
 	})
 }
@@ -86,7 +86,7 @@ var usersGetHandler = withAdmin(func(w http.ResponseWriter, r *http.Request, d *
 })
 
 var userGetHandler = withSelfOrAdmin(func(w http.ResponseWriter, r *http.Request, d *data) (int, error) {
-	u, err := d.store.GetUser(d.server.Root, d.server.FollowExternalSymlinks, d.raw.(uint))
+	u, err := d.store.GetUser(d.server.Root, d.server.FollowExternalSymlinks, d.id)
 	if errors.Is(err, fberrors.ErrNotExist) {
 		return http.StatusNotFound, err
 	}
@@ -121,7 +121,7 @@ var userDeleteHandler = withSelfOrAdmin(func(_ http.ResponseWriter, r *http.Requ
 		}
 	}
 
-	err := d.store.DeleteUser(d.raw.(uint))
+	err := d.store.DeleteUser(d.id)
 	if err != nil {
 		return errToStatus(err), err
 	}
@@ -201,7 +201,7 @@ var userPutHandler = withSelfOrAdmin(func(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	if req.Data.ID != d.raw.(uint) {
+	if req.Data.ID != d.id {
 		return http.StatusBadRequest, nil
 	}
 
@@ -225,7 +225,7 @@ var userPutHandler = withSelfOrAdmin(func(w http.ResponseWriter, r *http.Request
 			}
 		} else {
 			var suser *users.User
-			suser, err = d.store.GetUser(d.server.Root, d.server.FollowExternalSymlinks, d.raw.(uint))
+			suser, err = d.store.GetUser(d.server.Root, d.server.FollowExternalSymlinks, d.id)
 			if err != nil {
 				return http.StatusInternalServerError, err
 			}

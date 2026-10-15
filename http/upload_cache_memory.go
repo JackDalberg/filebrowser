@@ -3,6 +3,7 @@ package fbhttp
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/jellydator/ttlcache/v3"
@@ -44,16 +45,16 @@ type memoryUploadCache struct {
 
 func newMemoryUploadCache() *memoryUploadCache {
 	cache := ttlcache.New[string, memoryUploadEntry]()
-	cache.OnEviction(func(_ context.Context, reason ttlcache.EvictionReason, item *ttlcache.Item[string, memoryUploadEntry]) {
+	cache.OnEviction(func(ctx context.Context, reason ttlcache.EvictionReason, item *ttlcache.Item[string, memoryUploadEntry]) {
 		if reason == ttlcache.EvictionReasonExpired {
-			fmt.Printf("deleting incomplete upload file: \"%s\"\n", item.Key())
+			slog.InfoContext(ctx, "deleting incomplete upload file", "path", item.Key())
 			// Delete through the scoped removal callback rather than a raw
 			// os.Remove on the cached path, so an ancestor directory swapped for
 			// a symlink during the TTL window cannot redirect the delete outside
 			// the user's scope.
 			if remove := item.Value().remove; remove != nil {
 				if err := remove(); err != nil {
-					fmt.Printf("failed to delete incomplete upload file %q: %v\n", item.Key(), err)
+					slog.ErrorContext(ctx, "failed to delete incomplete upload file", "path", item.Key(), "err", err)
 				}
 			}
 		}
