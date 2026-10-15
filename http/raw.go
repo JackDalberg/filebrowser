@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/JackDalberg/filebrowser/files"
-	"github.com/JackDalberg/filebrowser/fileutils"
 	"github.com/JackDalberg/filebrowser/users"
 	"github.com/mholt/archives"
 )
@@ -179,7 +178,7 @@ func rawDirHandler(w http.ResponseWriter, r *http.Request, d *data, file *files.
 		return http.StatusInternalServerError, err
 	}
 
-	commonDir := fileutils.CommonPrefix(filepath.Separator, filenames...)
+	commonDir := files.CommonPrefix(filepath.Separator, filenames...)
 
 	var allFiles []archives.FileInfo
 	for _, fname := range filenames {

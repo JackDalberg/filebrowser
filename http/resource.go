@@ -17,7 +17,6 @@ import (
 
 	fberrors "github.com/JackDalberg/filebrowser/errors"
 	"github.com/JackDalberg/filebrowser/files"
-	"github.com/JackDalberg/filebrowser/fileutils"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/spf13/afero"
 )
@@ -353,7 +352,7 @@ func patchAction(ctx context.Context, action, src, dst string, d *data) error {
 			return fberrors.ErrPermissionDenied
 		}
 
-		return fileutils.Copy(d.user.Fs, src, dst, d.settings.FileMode, d.settings.DirMode)
+		return files.Copy(d.user.Fs, src, dst, d.settings.FileMode, d.settings.DirMode)
 	case "rename":
 		if !d.user.Perm.Rename {
 			return fberrors.ErrPermissionDenied
@@ -373,7 +372,7 @@ func patchAction(ctx context.Context, action, src, dst string, d *data) error {
 			return err
 		}
 
-		return fileutils.MoveFile(d.user.Fs, src, dst, d.settings.FileMode, d.settings.DirMode)
+		return files.MoveFile(d.user.Fs, src, dst, d.settings.FileMode, d.settings.DirMode)
 	default:
 		return fmt.Errorf("unsupported action %s: %w", action, fberrors.ErrInvalidRequestParams)
 	}
